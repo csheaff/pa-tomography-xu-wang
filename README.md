@@ -8,3 +8,5 @@ This Python program should operate with the base installation of the free Spyder
 pip3 install -r requirements.txt
 
 and doing so in a virtual environment is recommended.
+
+Note: I wrote this while learning Pyton, so it's fairly unpolished. I'll touch it up and make it PEP8 eventually.
