@@ -42,6 +42,39 @@ fn complex2real() {
 }
 
 
+fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> Array3<f64> {
+
+//    n_det = xd.len();
+    let sigs = Array3::<f64>::zeros((t.len(), 91, 91));
+
+    sigs
+}
+
+
+
 fn main() {
-    complex2real()
+    //    complex2real()
+
+    let z_targ = 15.0;
+    let tar_info: Array2<f64> = 1e-3 * array![[18.0, 0.0, z_targ, 1.5],[-18.0, 0.0, z_targ, 1.5],[9.0, 0.0, z_targ, 1.5],[-9.0, 0.0, z_targ, 1.5],[0.0, 0.0, z_targ, 1.5],[0.0, 12.0, z_targ, 4.0],[0.0, -12.0, z_targ, 4.0]];
+    let n_targ = tar_info.shape()[0];
+    
+    let aper_len = 60e-3;
+    let det_pitch = (2.0 / 3.0) * 1e-3;
+    let xd = Array::range(-aper_len / 2.0, aper_len / 2.0 + det_pitch, det_pitch);
+    let n_det = xd.len();
+
+    let fs = 20e6;
+    let ts = 1.0 / fs;
+    let t = Array::range(0.0, 65e-6 + ts, ts);
+
+    let mut sigs = Array3::<f64>::zeros((t.len(), n_det, n_det));
+
+    for n in 0..n_targ {
+	println!("Generating recorded signals arising from target {} of {}", n + 1, n_targ);
+	let ti_slice = tar_info.slice(s![n, ..]);
+	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ * 1e-3);
+
+    }
+//    println!("{:?}", xd)
 }
