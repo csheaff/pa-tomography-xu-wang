@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from scipy import linalg
 from scipy import signal
 from scipy.fftpack import fft, ifft, fftshift, ifftshift
+import time
+
 
 def stepFunc(x):
     """Heaviside function - couldn't find a native function that could handle arrays"""
@@ -70,7 +72,7 @@ def getSignals(tarInfo, xd, t, c=1484):
 
     prec = np.empty([len(t),len(xd),len(yd)])  #pre-allocation of signal array
     for xi in range(len(xd)):
-        print(xi)
+        #print(xi)
         for yi in range(len(yd)):  #index detector
             paSig = 0
             for m in range(numSdX):  #goal: sum across subdetectors
@@ -156,6 +158,7 @@ def tomPlot2D(data, x, y, dr):
     return
 
 if __name__ == '__main__':
+    start = time.time()
     #define (x,y,z) position and radius  of spherical targets. Detector plane is at z = 0
     zTargs = 15  #target plane height (mm)
     tarInfo = 1e-3*np.array([[18, 0, zTargs, 1.5]])#,[-18, 0, zTargs, 1.5],[9, 0, zTargs, 1.5],[-9, 0, zTargs, 1.5],[0, 0, zTargs, 1.5],[0, 12, zTargs, 4],[0, -12, zTargs, 4]]); 
@@ -178,5 +181,4 @@ if __name__ == '__main__':
 #    pfnorm, xf, yf, zf = perfTomog(sigs, xd, t, zTargs*1e-3)
     
  #   tomPlot2D(pfnorm, xf, yf, 6)
-
-
+    print(f"Elapsed time: {time.time() - start}")

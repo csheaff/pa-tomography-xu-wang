@@ -9,6 +9,7 @@ use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
 use std::vec::Vec;
+use std::time::Instant;
 
 // fn complex2complex() {
 //     let n = 128;
@@ -69,7 +70,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
     let n_det_y = yd.len();
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
     for xi in 0..n_det_x {
-	println!("{ }", xi);
+	//println!("{ }", xi);
 	for yi in 0..n_det_y {
 	    let mut pa_sig = Array1::<f64>::zeros(t.len());
 	    for m in 0..n_subdet_perdim {
@@ -96,6 +97,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 
 
 fn main() {
+    let before = Instant::now();
     //    complex2real()
 
     let z_targ = 15.0;
@@ -119,7 +121,8 @@ fn main() {
 	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ * 1e-3);
     }
    
-    println!("{:?}", sigs.mean())
+    println!("{:?}", sigs.mean());
+    println!("Elapsed time: {:.2?}", before.elapsed());
 }
 
 
