@@ -1,6 +1,8 @@
 extern crate ndarray;
 use ndarray::prelude::*;
 use ndarray_linalg::*;
+use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
+use ndarray_stats::SummaryStatisticsExt;
 //use std::f64::consts::*;
 //use std::path::PathBuf;
 use fftw::array::AlignedVec;
@@ -54,11 +56,11 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
     let yd = xd.clone();
     let det_len = 2e-3;
     let n_subdet = 25;
-    let n_subdet_perdim = (n_subdet as f64).sqrt() as i32;
-    let subdet_pitch = det_len / n_subdet as f64;
-    let subdet_ind = Array::range(0.0, n_subdet as f64, 1.0) - (n_subdet as f64 - 1.0) / 2.0;
+    let n_subdet_perdim = (n_subdet as f64).sqrt() as usize;
+    let subdet_pitch = det_len / (n_subdet as f64).sqrt();
+    let subdet_ind = Array::range(0.0, n_subdet_perdim as f64, 1.0) - (n_subdet_perdim as f64 - 1.0) / 2.0;
     let subdet_offset = subdet_pitch * &subdet_ind;
-
+    
     let fs = 1.0 / (t[1] - t[0]);
     let fc = 4e6;
     let c = 1484.0;
@@ -70,30 +72,27 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 	println!("{ }", xi);
 	for yi in 0..n_det_y {
 	    let mut pa_sig = Array1::<f64>::zeros(t.len());
-	    for m in 0..n_subdet {
-		for n in 0..n_subdet {
+	    for m in 0..n_subdet_perdim {
+		for n in 0..n_subdet_perdim {
  		    let det_xyz = array![xd[xi] + subdet_offset[m], yd[yi] + subdet_offset[n], 0.0];
 		    let tar_xyz = tar_info.slice(s![..3]);
 		    let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
 		    let tar_rad = tar_info[3];
-		    let step_fn_arg = tar_rad - 1.0* (r - c * t).mapv(f64::abs);
-		    let step_fn_arg = t.mapv(f64::abs);  // why is mapv so slow??
+		    let step_fn_arg = tar_rad - (r - c * t).mapv(f64::abs);
+		    //let step_fn_arg = t.mapv(f64::abs);  // why is mapv so slow??
 		    pa_sig = pa_sig + step_fn(&step_fn_arg) * (r - c * t) / (2.0 * r);
+		    // if yi == 0 && xi == 0 && m == 0 {
+		    // 	println!("{:?}", pa_sig.max()); //pa_sig.max());
+
+		    }
 		}
-	    }
 	    let pr = pa_sig / n_subdet as f64;
 	    let mut slice = sigs.slice_mut(s![.., xi, yi]);
 	    slice.assign(&pr);
 	}
     }
-    
-    
-    
-//    println!("{:?}", subdet_offset);
-    
     sigs
 }
-
 
 
 fn main() {
@@ -118,9 +117,9 @@ fn main() {
 	println!("Generating recorded signals arising from target {} of {}", n + 1, n_targ);
 	let ti_slice = tar_info.slice(s![n, ..]);
 	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ * 1e-3);
-
     }
-//    println!("{:?}", xd)
+   
+    println!("{:?}", sigs.mean())
 }
 
 

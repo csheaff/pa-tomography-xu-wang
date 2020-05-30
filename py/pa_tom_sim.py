@@ -64,12 +64,13 @@ def getSignals(tarInfo, xd, t, c=1484):
     sdInd = np.arange(numSdX)-(numSdX-1)/2  #index array for subdetectors - for numSdX = 5, sdInd = [-2,-1,0,1,2]
     sdInd = sdInd.astype(int)  #convert array to integers
     sdOffset = sdPitch*sdInd  #offset distance of subdetectors from center of detector (1-D)
-
+    
     fs = 1/(t[1]-t[0]) #sampling freq
     fc = 4e6  #filter cutoff freq
 
     prec = np.empty([len(t),len(xd),len(yd)])  #pre-allocation of signal array
     for xi in range(len(xd)):
+        print(xi)
         for yi in range(len(yd)):  #index detector
             paSig = 0
             for m in range(numSdX):  #goal: sum across subdetectors
@@ -78,9 +79,12 @@ def getSignals(tarInfo, xd, t, c=1484):
                     tarXYZ = tarInfo[0:3]  #target position [x,y,z]
                     R = linalg.norm(detXYZ-tarXYZ)   #distance between subdetector and target
                     tarRad = tarInfo[3]  #target radius
-                    paSig = paSig + stepFunc(tarRad-abs(R-c*t))*(R-c*t)/(2*R)  #generation of photoacoustic signal
+                    st = tarRad-abs(R-c*t)
+                    paSig = paSig + stepFunc(st)*(R-c*t)/(2*R)  #generation of photoacoustic signal
+                    # if yi == 0 and xi == 0 and m == 0:
+                    #    print(f'{np.max(paSig)}')
             pr = paSig/numSubdet; #average signal across subdetectors
-            prec[:,xi,yi] = hanWinFilt(pr, fs, fc) #filter
+            prec[:,xi,yi] = pr #hanWinFilt(pr, fs, fc) #filter
     return prec
 
 def perfTomog(prec, xd, t, zTargs, c=1484):
@@ -154,7 +158,7 @@ def tomPlot2D(data, x, y, dr):
 if __name__ == '__main__':
     #define (x,y,z) position and radius  of spherical targets. Detector plane is at z = 0
     zTargs = 15  #target plane height (mm)
-    tarInfo = 1e-3*np.array([[18, 0, zTargs, 1.5],[-18, 0, zTargs, 1.5],[9, 0, zTargs, 1.5],[-9, 0, zTargs, 1.5],[0, 0, zTargs, 1.5],[0, 12, zTargs, 4],[0, -12, zTargs, 4]]); 
+    tarInfo = 1e-3*np.array([[18, 0, zTargs, 1.5]])#,[-18, 0, zTargs, 1.5],[9, 0, zTargs, 1.5],[-9, 0, zTargs, 1.5],[0, 0, zTargs, 1.5],[0, 12, zTargs, 4],[0, -12, zTargs, 4]]); 
 
     #define central positions of detectors
     aperLen = 60e-3  #aperture length
@@ -169,9 +173,10 @@ if __name__ == '__main__':
     for jj in range(tarInfo.shape[0]):
         print('Generating recorded signals arising from target', jj+1, 'of', tarInfo.shape[0])
         sigs = sigs + getSignals(tarInfo[jj,:], xd, t)
-        
-    pfnorm, xf, yf, zf = perfTomog(sigs, xd, t, zTargs*1e-3)
+
+    print(np.mean(sigs))
+#    pfnorm, xf, yf, zf = perfTomog(sigs, xd, t, zTargs*1e-3)
     
-    tomPlot2D(pfnorm, xf, yf, 6)
+ #   tomPlot2D(pfnorm, xf, yf, 6)
 
 
