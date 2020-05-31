@@ -173,13 +173,14 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 }
 
 
-fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> (Array3<f64>, Array1<f64>, Array1<f64>, Array1<f64>) {
+//fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> (Array3<f64>, Array1<f64>, Array1<f64>, Array1<f64>) {
+fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) {
     let c = 1484.0;
     let res = 500e-6;
-    let xf = Array::range(xd[0], xd[xd.len() - 1] * res, res);
+    let xf = Array::range(xd[0], xd[xd.len() - 1] + res, res);
     let yf = xf.clone();
     let zf = array![z_targ];
-    let (Yf, Xf, Zf) = meshgrid_3d(&yf, &xf, &zf);
+    let (Yf, Xf, Zf) = meshgrid_3d(&yf, &xf, &zf);  // DOUBLE-CHECK
     let Z2 = Zf.mapv(|Zf| Zf.powi(2));
     let fs = 1.0 / (t[1] - t[0]);
     let nfft = 2048;
@@ -199,37 +200,40 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let t = t.mapv(|x| c64::new(x, 0.0)); // convert to complex
 
     for xi in 0..xd.len() {
-	let X2 = (&Xf - xd[xi]);
-	let X2 = X2.mapv(|X2| X2.powi(2));
-	for yi in 0..yd.len() {
-	    let Y2 = (&Yf - xd[xi]);
-	    let Y2 = Y2.mapv(|Y2| Y2.powi(2));
-	    let dist2 = &X2 + &Y2 + &Z2;
-	    let dist = &dist2.mapv(f64::sqrt);
-	    let distind = (fs / c) * dist;
-	    let distind = distind.mapv(|x| x as usize) - 1; // only subtracting 1 here to be consistent with python
+    	let X2 = (&Xf - xd[xi]);
+    	let X2 = X2.mapv(|X2| X2.powi(2));
+    	for yi in 0..yd.len() {
+    	    let Y2 = (&Yf - yd[yi]);
+    	    let Y2 = Y2.mapv(|Y2| Y2.powi(2));
+    	    let dist2 = &X2 + &Y2 + &Z2;
+    	    let dist = &dist2.mapv(f64::sqrt);
+    	    let distind = (fs / c) * dist;
+    	    let distind = distind.mapv(|x| <f64>::round(x) as usize) - 1; // only subtracting 1 here to be consistent with python
+	    if xi == 0 && yi == 0 {
+		println!("{:}", distind.mean().unwrap());
+	    }
 	    
-	    let p = sigs.slice(s![.., xi, yi]).to_owned();
-	    let p_w = fft(&p, nfft);
-	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
-	    let p_filt = ifft(&p_filt_w);
+    	    let p = sigs.slice(s![.., xi, yi]).to_owned();
+    	    let p_w = fft(&p, nfft);
+    	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
+    	    let p_filt = ifft(&p_filt_w);
 
-	    let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
-	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * p.slice(s![..p.len()]);
-	    let b1 = array_indexing_3d_complex(&b, &distind);
-	    let omega = (ds / dist2) * &Zf / dist;
-	    let omega = omega.mapv(|x| c64::new(x, 0.0)); // convert to complex
-	    pnum = pnum + &omega * &b1;
-	    pden = pden + omega;
-	}
-	println!("Reconstrucing image with detector row {}", xd.len() - xi);
+    	    let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
+    	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * p.slice(s![..p.len()]);
+    	    let b1 = array_indexing_3d_complex(&b, &distind);
+    	    // let omega = (ds / dist2) * &Zf / dist;
+    	    // let omega = omega.mapv(|x| c64::new(x, 0.0)); // convert to complex
+    	    // pnum = pnum + &omega * &b1;
+    	    // pden = pden + omega;
+    	}
+    	println!("Reconstrucing image with detector row {}", xd.len() - xi);
     }
-    let pg = pnum / pden;
-    let pg_max_ind = pg.mapv(|x| x.norm()).argmax().unwrap(); // index of maximum magnitude
-    let pg_max = pg[pg_max_ind];
-    let pfnorm = (pg / pg_max).mapv(|x| x.re());
+    // let pg = pnum / pden;
+    // let pg_max_ind = pg.mapv(|x| x.norm()).argmax().unwrap(); // index of maximum magnitude
+    // let pg_max = pg[pg_max_ind];
+    // let pfnorm = (pg / pg_max).mapv(|x| x.re());
 
-    (pfnorm, xf, yf, zf)
+//    (pfnorm, xf, yf, zf)
 }
     
     
@@ -243,6 +247,7 @@ fn main() {
 
     let z_targ = 15.0;
     let tar_info: Array2<f64> = 1e-3 * array![[18.0, 0.0, z_targ, 1.5]]; //,[-18.0, 0.0, z_targ, 1.5],[9.0, 0.0, z_targ, 1.5],[-9.0, 0.0, z_targ, 1.5],[0.0, 0.0, z_targ, 1.5],[0.0, 12.0, z_targ, 4.0],[0.0, -12.0, z_targ, 4.0]];
+    let z_targ = z_targ * 1e-3;
     let n_targ = tar_info.shape()[0];
     
     let aper_len = 60e-3;
@@ -256,15 +261,17 @@ fn main() {
 
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det, n_det));
 
+    
     for n in 0..n_targ {
 	println!("Generating recorded signals arising from target {} of {}", n + 1, n_targ);
 	let ti_slice = tar_info.slice(s![n, ..]);
-	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ * 1e-3);
+	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ);
     }
 
     println!("{:?}", sigs.mean().unwrap());
-    let (pfnorm, xf, yf, zf) = perf_tom(&sigs, &xd, &t, z_targ);
-    println!("{:?}", pfnorm.mean().unwrap());
+    perf_tom(&sigs, &xd, &t, z_targ);
+//    let (pfnorm, xf, yf, zf) = perf_tom(&sigs, &xd, &t, z_targ);
+  //  println!("{:?}", pfnorm.mean().unwrap());
     
     // Be sure to bench by running:
     // $ cargo build --release
@@ -282,15 +289,15 @@ fn main2() {
   //  let y = [5.0,6.0,7.0];
     //let z = x - y;
 
-    // let x = Array::range(0.0, 20.0, 2.0);
-    // let y = Array::range(0.0, 5.0, 1.0);
-    // let z = Array::range(0.0, 6.0, 1.0);
+    let x = Array::range(0.0, 3.0, 1.0);
+    let y = Array::range(0.0, 5.0, 1.0);
+    let z = Array::range(0.0, 6.0, 1.0);
     
-    // let (xx, yy, zz) = meshgrid_3d(&x, &y, &z);
-    // println!("{:?}", xx.slice(s![2, 3, 4]));
+    let (xx, yy, zz) = meshgrid_3d(&x, &y, &z);
+    println!("{:?}", zz.mean().unwrap());
     // println!("{:?}", yy.slice(s![2, 3, 4]));
     // println!("{:?}", zz.slice(s![2, 3, 4]));
-    //    println!("{:?}", y);
+    
 
     // let x = Array::linspace(1.0, 0.0, 1024);
     // let y = fft(&x, 1024);
@@ -303,11 +310,7 @@ fn main2() {
     //             [1, 1, 2]]];  // 
     // let x = x.mapv(|x| c64::new(x, 0.0)); // convert to complex
     // let aa = a.mapv(|hi| hi as usize);
-    // let yo = array_indexing_3d_complex(&x, &aa);
-
-    let c = c64::new(2.0, 4.0);
-    
-    println!("{:}", c.im())
+    // let yo = array_indexing_3d_complex(&x, &
     
 
     

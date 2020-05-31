@@ -91,7 +91,7 @@ def getSignals(tarInfo, xd, t, c=1484):
 
 def perfTomog(prec, xd, t, zTargs, c=1484):
     res = 500e-6 #350e-6  #desired spatial resolution (m)
-    xf = arange2(xd[0],xd[-1]+res,res) # (m) choose reconstruction space to be directly above detector array
+    xf = np.arange(xd[0],xd[-1]+res,res) # (m) choose reconstruction space to be directly above detector array
     yf = xf.copy() 
     zf = np.array([zTargs]); #z location of targets, set as target plane by default. You can create a 3-D field by making this an array
     Yf, Xf, Zf = np.meshgrid(yf, xf, zf)
@@ -99,8 +99,6 @@ def perfTomog(prec, xd, t, zTargs, c=1484):
 
     fs = 1/(t[1]-t[0])  #sampl freq
     NFFT = 2**nextpow2(prec.shape[0])
-    import pdb
-    pdb.set_trace()
     fv = fs/2*np.linspace(0,1,NFFT/2+1)
     fv2 = -np.flipud(fv)  #for
     fv2 = np.delete(fv2,0)
@@ -123,7 +121,7 @@ def perfTomog(prec, xd, t, zTargs, c=1484):
             p = prec[:,xi,yi]
             pf = ifft(-1j*k*fft(p,NFFT)) #apply ramp filter
             if xi == 0 and yi == 0:
-                print(pf[500])
+                print(np.mean(distind))
             b = 2*p-2*t*c*pf[0:len(p)]
             b1 = b[distind-1]  #subtracted 1 to be consistent with Matlab result wherein indexing begins at 1    
             omega = (ds/dist**2)*Zf/dist
