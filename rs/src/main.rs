@@ -28,6 +28,7 @@ use std::time::Instant;
 
 
 fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
+    // this is unnormalized, just like scipy.fftpack.fft
     
     // not sure how to convert Array1 to AlignedVec other than element-by-element
     // pad array if n > x.len()
@@ -49,14 +50,13 @@ fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
 
     let xfft = Array1::<c64>::from(Vec::from(xfft.as_slice()));
 
-    let xfft_n = xfft / c64::new(n as f64, 0.0);
-
-    xfft_n
+    xfft
 }
 
 
 fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
-
+    // this will normalize, just like scipy.fftpack.ifft
+    
     let n = xfft.len();
 
    // not sure how to convert Array1 to AlignedVec other than element-by-element
@@ -72,6 +72,8 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
     plan.c2c(&mut xfft2, &mut x).unwrap();
 
     let x = Array1::<c64>::from(Vec::from(x.as_slice()));
+
+    let x = x / c64::new(n as f64, 0.0);
 
     x
     
@@ -277,7 +279,7 @@ fn main() {
     let y = fft(&x, 1024);
     let z = ifft(&y);
 
-    println!("{:?}", x);
     println!("{:?}", z);
+//    println!("{:?}", z);
     
 }
