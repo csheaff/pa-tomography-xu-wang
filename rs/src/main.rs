@@ -1,6 +1,5 @@
 #[macro_use(stack)]
 extern crate ndarray;
-extern crate num;
 use ndarray::prelude::*;
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
@@ -12,7 +11,6 @@ use fftw::plan::*;
 use fftw::types::*;
 use std::vec::Vec;
 use std::time::Instant;
-use num::complex::Complex64;
 
 // fn complex2complex() {
     
@@ -29,14 +27,18 @@ use num::complex::Complex64;
 // }
 
 
-fn fft(x: Array1<f64>) -> Array1<c64> {
-
-    let n = x.len();
+fn fft(x: Array1<f64>, n: usize) -> Array1<c64> {
     
     // not sure how to convert Array1 to AlignedVec other than element-by-element
+    // pad array if n > x.len()
     let mut x2 = AlignedVec::new(n);
     for i in 0..n {
-	x2[i] = c64::new(x[i], 0.0);  // c64 - complex datatype with args (real component, imag component)
+	if i < x.len() {
+	    x2[i] = c64::new(x[i], 0.0);  // c64 - complex datatype with args (real component, imag component)
+	}
+	else {
+	    x2[i] = c64::new(0.0, 0.0);
+	}
     }
 
     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
@@ -245,7 +247,8 @@ fn main() {
     //    println!("{:?}", y);
 
     let x = Array::linspace(1.0, 0.0, 1024);
-    let y = fft(x);
+    let y = fft(x, 2048);
+    let y = y.mapv(|y| y.scale(2.0));  // to scale a Complex datatype, you must use .scale()
     println!("{:?}", y);
     
 }
