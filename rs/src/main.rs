@@ -52,6 +52,37 @@ fn step_fn(x: &Array1<f64>) -> Array1<f64> {
 }
 
 
+fn meshgrid_3d(x1: Array1<f64>, x2: Array1<f64>, x3: Array1<f64>) -> (Array3<f64>, Array3<f64>, Array3<f64>) {
+
+    let mut xx = Array3::<f64>::zeros((x2.len(), x1.len(), x3.len()));
+    let mut yy = xx.clone();
+    let mut zz = xx.clone();
+
+    for m in 0..x2.len() {
+	for n in 0..x3.len() {
+	    let mut slice = xx.slice_mut(s![m, .., n]);
+	    slice.assign(&x1);
+	}
+    }
+
+    for m in 0..x1.len() {
+    	for n in 0..x3.len() {
+    	    let mut slice = yy.slice_mut(s![.., m, n]);
+    	    slice.assign(&x2);
+    	}
+    }
+
+    for m in 0..x2.len() {
+    	for n in 0..x1.len() {
+    	    let mut slice = zz.slice_mut(s![m, n, ..]);
+    	    slice.assign(&x3);
+    	}
+    }
+
+    (xx, yy, zz)
+}
+
+
 fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> Array3<f64> {
     // Clay this is all very slow and I don't know why.
     let yd = xd.clone();
@@ -70,7 +101,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
     let n_det_y = yd.len();
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
     for xi in 0..n_det_x {
-	//println!("{ }", xi);
+	println!("{ }", xi);
 	for yi in 0..n_det_y {
 	    let mut pa_sig = Array1::<f64>::zeros(t.len());
 	    for m in 0..n_subdet_perdim {
@@ -96,7 +127,20 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 }
 
 
-fn main() {
+// fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) {
+//     let res = 500e-6;
+//     let xf = Array::range(0.0, xd[0], xd[-1] * res, res);
+//     let yf = xf.clone();
+//     let zf = z_targ;
+    
+
+
+
+
+// }
+
+
+fn main2() {
     let before = Instant::now();
     //    complex2real()
 
@@ -122,19 +166,30 @@ fn main() {
     }
    
     println!("{:?}", sigs.mean());
+
+    // Be sure to bench by running:
+    // $ cargo build --release
+    // $ ./target/release/pa-tom
     println!("Elapsed time: {:.2?}", before.elapsed());
 }
 
 
 
-// fn main2() {
+fn main() {
 
-// //    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
-// //    let x = Array::range(0.0, 1300.0, 1.0);
-//     let x = [1.0,2.0,3.0];
-//     let y = [5.0,6.0,7.0];
-//     let z = x - y;
+//    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
+//    let x = Array::range(0.0, 1300.0, 1.0);
+//    let x = [1.0,2.0,3.0];
+  //  let y = [5.0,6.0,7.0];
+    //let z = x - y;
 
-//     println!("{:?}", z);
-// //    println!("{:?}", y);
-// }
+    let x = Array::range(0.0, 4.0, 1.0);
+    let y = Array::range(0.0, 5.0, 1.0);
+    let z = Array::range(0.0, 6.0, 1.0);
+    
+    let (xx, yy, zz) = meshgrid_3d(x, y, z);
+    println!("{:?}", xx.slice(s![2, 3, 4]));
+    println!("{:?}", yy.slice(s![2, 3, 4]));
+    println!("{:?}", zz.slice(s![2, 3, 4]));
+//    println!("{:?}", y);
+}
