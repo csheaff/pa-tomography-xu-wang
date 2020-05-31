@@ -12,20 +12,6 @@ use fftw::types::*;
 use std::vec::Vec;
 use std::time::Instant;
 
-// fn complex2complex() {
-    
-    
-//     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
-//     let mut a = AlignedVec::new(n);
-//     let mut b = AlignedVec::new(n);
-//     let k0 = 2.0 * PI / n as f64;
-//     for i in 0..n {
-// 	a[i] = c64::new((k0 * i as f64).cos(), 0.0);
-//     }
-//     plan.c2c(&mut a, &mut b).unwrap();
-    
-// }
-
 
 fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
     // this is unnormalized, just like scipy.fftpack.fft
@@ -78,23 +64,6 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
     x
     
 }
-
-
-// fn complex2real() {
-
-//     let n = 128;
-//     let mut c2r: C2RPlan64 = C2RPlan::aligned(&[n], Flag::Measure).unwrap();
-//     let mut a = AlignedVec::new(n / 2 + 1);
-//     let mut b = AlignedVec::new(n);
-//     for i in 0..(n / 2 + 1) {
-// 	a[i] = c64::new(1.0, 0.0);
-//     }
-//     c2r.c2r(&mut a, &mut b).unwrap();
-
-//     println!("{:?}", b);
-
-//     let c = Array::from(Vec::from(b.as_slice()));
-// }
 
 
 fn step_fn(x: &Array1<f64>) -> Array1<f64> {
@@ -213,15 +182,19 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
 	    let p = sigs.slice(s![.., xi, yi]).to_owned();
 	    let p_w = fft(&p, nfft);
 	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
+	    let p_filt = ifft(&p_filt_w);
+	    if xi == 0 && yi == 0 {
+		println!("{:?}", p_filt[500]);
+	    }
 	}
     }
     
     
-    println!("{:?}", k)
+  //  println!("{:?}", k)
 }
 
 
-fn main2() {
+fn main() {
     let before = Instant::now();
     //    complex2real()
 
@@ -257,7 +230,7 @@ fn main2() {
 
 
 
-fn main() {
+fn main2() {
 
 //    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
 //    let x = Array::range(0.0, 1300.0, 1.0);
@@ -279,7 +252,7 @@ fn main() {
     let y = fft(&x, 1024);
     let z = ifft(&y);
 
-    println!("{:?}", z);
+//    println!("{:?}", z);
 //    println!("{:?}", z);
     
 }

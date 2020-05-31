@@ -122,6 +122,8 @@ def perfTomog(prec, xd, t, zTargs, c=1484):
             distind = distind.astype(int) #convert to integer for indexing
             p = prec[:,xi,yi]
             pf = ifft(-1j*k*fft(p,NFFT)) #apply ramp filter
+            if xi == 0 and yi == 0:
+                print(pf[500])
             b = 2*p-2*t*c*pf[0:len(p)]
             b1 = b[distind-1]  #subtracted 1 to be consistent with Matlab result wherein indexing begins at 1    
             omega = (ds/dist**2)*Zf/dist
