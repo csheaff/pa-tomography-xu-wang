@@ -27,7 +27,7 @@ use std::time::Instant;
 // }
 
 
-fn fft(x: Array1<f64>, n: usize) -> Array1<c64> {
+fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
     
     // not sure how to convert Array1 to AlignedVec other than element-by-element
     // pad array if n > x.len()
@@ -49,7 +49,31 @@ fn fft(x: Array1<f64>, n: usize) -> Array1<c64> {
 
     let xfft = Array1::<c64>::from(Vec::from(xfft.as_slice()));
 
-    xfft
+    let xfft_n = xfft / c64::new(n as f64, 0.0);
+
+    xfft_n
+}
+
+
+fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
+
+    let n = xfft.len();
+
+   // not sure how to convert Array1 to AlignedVec other than element-by-element
+    let mut xfft2 = AlignedVec::new(n);
+    for i in 0..n {
+	    xfft2[i] = xfft[i];
+    }
+
+    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Backward, Flag::Measure).unwrap();
+
+    let mut x = AlignedVec::new(n);
+
+    plan.c2c(&mut xfft2, &mut x).unwrap();
+
+    let x = Array1::<c64>::from(Vec::from(x.as_slice()));
+
+    x
     
 }
 
@@ -174,6 +198,8 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let pden = 0.0 * &Yf;
     let yd = xd.clone();
 
+    let k = k.mapv(|x| c64::new(x, 0.0)); // convert to complex
+
     for xi in 0..xd.len() {
 	let X2 = (&Xf - xd[xi]);
 	let X2 = X2.mapv(|X2| X2.powi(2));
@@ -182,8 +208,9 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
 	    let Y2 = Y2.mapv(|Y2| Y2.powi(2));
 	    let dist = &X2 + &Y2;
 	    let dist = dist.mapv(|dist| dist.powi(2));
-	    let p = sigs.slice(s![.., xi, yi]);
-	    
+	    let p = sigs.slice(s![.., xi, yi]).to_owned();
+	    let p_w = fft(&p, nfft);
+	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
 	}
     }
     
@@ -247,8 +274,10 @@ fn main() {
     //    println!("{:?}", y);
 
     let x = Array::linspace(1.0, 0.0, 1024);
-    let y = fft(x, 2048);
-    let y = y.mapv(|y| y.scale(2.0));  // to scale a Complex datatype, you must use .scale()
-    println!("{:?}", y);
+    let y = fft(&x, 1024);
+    let z = ifft(&y);
+
+    println!("{:?}", x);
+    println!("{:?}", z);
     
 }
