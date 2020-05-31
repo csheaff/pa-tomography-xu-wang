@@ -72,7 +72,7 @@ fn step_fn(x: &Array1<f64>) -> Array1<f64> {
 }
 
 
-fn meshgrid_3d(x1: Array1<f64>, x2: Array1<f64>, x3: Array1<f64>) -> (Array3<f64>, Array3<f64>, Array3<f64>) {
+fn meshgrid_3d(x1: &Array1<f64>, x2: &Array1<f64>, x3: &Array1<f64>) -> (Array3<f64>, Array3<f64>, Array3<f64>) {
 
     let mut xx = Array3::<f64>::zeros((x2.len(), x1.len(), x3.len()));
     let mut yy = xx.clone();
@@ -100,6 +100,19 @@ fn meshgrid_3d(x1: Array1<f64>, x2: Array1<f64>, x3: Array1<f64>) -> (Array3<f64
     }
 
     (xx, yy, zz)
+}
+
+
+fn array_indexing_3d(x: &Array1<f64>, ind: &Array3<usize>) -> Array3<f64> {
+    let mut y = Array3::<f64>::zeros(ind.raw_dim());
+    for i in 0..ind.shape()[0] {
+	for j in 0..ind.shape()[1] {
+	    for k in 0..ind.shape()[2] {
+		y[[i, j, k]] = x[ind[[i, j, k]]];
+	    }
+	}
+    }
+    y
 }
 
 
@@ -153,8 +166,8 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let xf = Array::range(xd[0], xd[xd.len() - 1] * res, res);
     let yf = xf.clone();
     let zf = array![z_targ];
-    let (Yf, Xf, Zf) = meshgrid_3d(yf, xf, zf);
-    let Zf2 = Zf.mapv(|Zf| Zf.powi(2));
+    let (Yf, Xf, Zf) = meshgrid_3d(&yf, &xf, &zf);
+    let Z2 = Zf.mapv(|Zf| Zf.powi(2));
     let fs = 1.0 / (t[1] - t[0]);
     let nfft = 2048;
     let fv = (fs / 2.0) * Array::linspace(0.0, 1.0, (nfft / 2 + 1));
@@ -170,6 +183,7 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let yd = xd.clone();
 
     let k = k.mapv(|x| c64::new(x, 0.0)); // convert to complex
+    let t = t.mapv(|x| c64::new(x, 0.0)); // convert to complex
 
     for xi in 0..xd.len() {
 	let X2 = (&Xf - xd[xi]);
@@ -177,24 +191,32 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
 	for yi in 0..yd.len() {
 	    let Y2 = (&Yf - xd[xi]);
 	    let Y2 = Y2.mapv(|Y2| Y2.powi(2));
-	    let dist = &X2 + &Y2;
-	    let dist = dist.mapv(|dist| dist.powi(2));
+	    let dist = &X2 + &Y2 + &Z2;
+	    let dist = dist.mapv(f64::sqrt);
+	    let dist = dist.mapv(|x| x as usize) - 1;  // only subtracting 1 here to be consistent with python
+	    
 	    let p = sigs.slice(s![.., xi, yi]).to_owned();
 	    let p_w = fft(&p, nfft);
 	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
 	    let p_filt = ifft(&p_filt_w);
-	    if xi == 0 && yi == 0 {
-		println!("{:?}", p_filt[500]);
+
+	    let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
+	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * p.slice(s![..p.len()]);
+	    //let b1 = array_indexing_3d(&b, &dist);
+	    
+	    
+	    // if xi == 0 && yi == 0 {
+	    // 	println!("{:?}", p_filt[500]);
 	    }
-	}
     }
+}
     
     
   //  println!("{:?}", k)
-}
+//}
 
 
-fn main() {
+fn main2() {
     let before = Instant::now();
     //    complex2real()
 
@@ -230,7 +252,7 @@ fn main() {
 
 
 
-fn main2() {
+fn main() {
 
 //    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
 //    let x = Array::range(0.0, 1300.0, 1.0);
@@ -238,20 +260,32 @@ fn main2() {
   //  let y = [5.0,6.0,7.0];
     //let z = x - y;
 
-    // let x = Array::range(0.0, 4.0, 1.0);
-    // let y = Array::range(0.0, 5.0, 1.0);
-    // let z = Array::range(0.0, 6.0, 1.0);
+    let x = Array::range(0.0, 20.0, 2.0);
+    let y = Array::range(0.0, 5.0, 1.0);
+    let z = Array::range(0.0, 6.0, 1.0);
     
-    // let (xx, yy, zz) = meshgrid_3d(x, y, z);
+    let (xx, yy, zz) = meshgrid_3d(&x, &y, &z);
     // println!("{:?}", xx.slice(s![2, 3, 4]));
     // println!("{:?}", yy.slice(s![2, 3, 4]));
     // println!("{:?}", zz.slice(s![2, 3, 4]));
     //    println!("{:?}", y);
 
-    let x = Array::linspace(1.0, 0.0, 1024);
-    let y = fft(&x, 1024);
-    let z = ifft(&y);
+    // let x = Array::linspace(1.0, 0.0, 1024);
+    // let y = fft(&x, 1024);
+    // let z = ifft(&y);
 
+    let a = array![[[ 1,  2,  3],     // -- 2 rows  \_
+                [ 4,  5,  6]],    // --         /
+               [[ 7,  8,  9],     //            \_ 2 submatrices
+                [1, 1, 2]]];  // 
+    
+    let aa = a.mapv(|hi| hi as usize);
+    let yo = array_indexing_3d(&x, &aa);
+    
+    println!("{:?}", yo)
+    
+
+    
 //    println!("{:?}", z);
 //    println!("{:?}", z);
     
