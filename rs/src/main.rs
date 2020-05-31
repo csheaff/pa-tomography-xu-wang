@@ -116,6 +116,19 @@ fn array_indexing_3d(x: &Array1<f64>, ind: &Array3<usize>) -> Array3<f64> {
 }
 
 
+fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64> {
+    let mut y = Array3::<c64>::zeros(ind.raw_dim());
+    for i in 0..ind.shape()[0] {
+	for j in 0..ind.shape()[1] {
+	    for k in 0..ind.shape()[2] {
+		y[[i, j, k]] = x[ind[[i, j, k]]];
+	    }
+	}
+    }
+    y
+}
+
+
 fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> Array3<f64> {
     // Clay this is all very slow and I don't know why.
     let yd = xd.clone();
@@ -202,7 +215,7 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
 
 	    let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
 	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * p.slice(s![..p.len()]);
-	    //let b1 = array_indexing_3d(&b, &dist);
+	    let b1 = array_indexing_3d_complex(&b, &dist);
 	    
 	    
 	    // if xi == 0 && yi == 0 {
@@ -274,13 +287,14 @@ fn main() {
     // let y = fft(&x, 1024);
     // let z = ifft(&y);
 
+    
     let a = array![[[ 1,  2,  3],     // -- 2 rows  \_
                 [ 4,  5,  6]],    // --         /
                [[ 7,  8,  9],     //            \_ 2 submatrices
                 [1, 1, 2]]];  // 
-    
+    let x = x.mapv(|x| c64::new(x, 0.0)); // convert to complex
     let aa = a.mapv(|hi| hi as usize);
-    let yo = array_indexing_3d(&x, &aa);
+    let yo = array_indexing_3d_complex(&x, &aa);
     
     println!("{:?}", yo)
     
