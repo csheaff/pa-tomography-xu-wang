@@ -99,6 +99,8 @@ def perfTomog(prec, xd, t, zTargs, c=1484):
 
     fs = 1/(t[1]-t[0])  #sampl freq
     NFFT = 2**nextpow2(prec.shape[0])
+    import pdb
+    pdb.set_trace()
     fv = fs/2*np.linspace(0,1,NFFT/2+1)
     fv2 = -np.flipud(fv)  #for
     fv2 = np.delete(fv2,0)
@@ -178,7 +180,7 @@ if __name__ == '__main__':
         sigs = sigs + getSignals(tarInfo[jj,:], xd, t)
 
     print(np.mean(sigs))
-#    pfnorm, xf, yf, zf = perfTomog(sigs, xd, t, zTargs*1e-3)
+    pfnorm, xf, yf, zf = perfTomog(sigs, xd, t, zTargs*1e-3)
     
- #   tomPlot2D(pfnorm, xf, yf, 6)
+    #tomPlot2D(pfnorm, xf, yf, 6)
     print(f"Elapsed time: {time.time() - start}")

@@ -1,5 +1,6 @@
 #[macro_use(stack)]
 extern crate ndarray;
+extern crate num;
 use ndarray::prelude::*;
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
@@ -11,35 +12,61 @@ use fftw::plan::*;
 use fftw::types::*;
 use std::vec::Vec;
 use std::time::Instant;
+use num::complex::Complex64;
 
-fn complex2complex() {
-    let n = 128;
-    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
-    let mut a = AlignedVec::new(n);
-    let mut b = AlignedVec::new(n);
-    let k0 = 2.0 * PI / n as f64;
+// fn complex2complex() {
+    
+    
+//     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
+//     let mut a = AlignedVec::new(n);
+//     let mut b = AlignedVec::new(n);
+//     let k0 = 2.0 * PI / n as f64;
+//     for i in 0..n {
+// 	a[i] = c64::new((k0 * i as f64).cos(), 0.0);
+//     }
+//     plan.c2c(&mut a, &mut b).unwrap();
+    
+// }
+
+
+fn fft(x: Array1<f64>) -> Array1<c64> {
+
+    let n = x.len();
+    
+    // not sure how to convert Array1 to AlignedVec other than element-by-element
+    let mut x2 = AlignedVec::new(n);
     for i in 0..n {
-	a[i] = c64::new((k0 * i as f64).cos(), 0.0);
+	x2[i] = c64::new(x[i], 0.0);  // c64 - complex datatype with args (real component, imag component)
     }
-    plan.c2c(&mut a, &mut b).unwrap();
+
+    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
+
+    let mut xfft = AlignedVec::new(n);
+
+    plan.c2c(&mut x2, &mut xfft).unwrap();
+
+    let xfft = Array1::<c64>::from(Vec::from(xfft.as_slice()));
+
+    xfft
+    
 }
 
 
-fn complex2real() {
+// fn complex2real() {
 
-    let n = 128;
-    let mut c2r: C2RPlan64 = C2RPlan::aligned(&[n], Flag::Measure).unwrap();
-    let mut a = AlignedVec::new(n / 2 + 1);
-    let mut b = AlignedVec::new(n);
-    for i in 0..(n / 2 + 1) {
-	a[i] = c64::new(1.0, 0.0);
-    }
-    c2r.c2r(&mut a, &mut b).unwrap();
+//     let n = 128;
+//     let mut c2r: C2RPlan64 = C2RPlan::aligned(&[n], Flag::Measure).unwrap();
+//     let mut a = AlignedVec::new(n / 2 + 1);
+//     let mut b = AlignedVec::new(n);
+//     for i in 0..(n / 2 + 1) {
+// 	a[i] = c64::new(1.0, 0.0);
+//     }
+//     c2r.c2r(&mut a, &mut b).unwrap();
 
-    println!("{:?}", b);
+//     println!("{:?}", b);
 
-    let c = Array::from(Vec::from(b.as_slice()));
-}
+//     let c = Array::from(Vec::from(b.as_slice()));
+// }
 
 
 fn step_fn(x: &Array1<f64>) -> Array1<f64> {
@@ -163,7 +190,7 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
 }
 
 
-fn main() {
+fn main2() {
     let before = Instant::now();
     //    complex2real()
 
@@ -199,26 +226,26 @@ fn main() {
 
 
 
-// fn main() {
+fn main() {
 
-// //    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
-// //    let x = Array::range(0.0, 1300.0, 1.0);
-// //    let x = [1.0,2.0,3.0];
-//   //  let y = [5.0,6.0,7.0];
-//     //let z = x - y;
+//    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
+//    let x = Array::range(0.0, 1300.0, 1.0);
+//    let x = [1.0,2.0,3.0];
+  //  let y = [5.0,6.0,7.0];
+    //let z = x - y;
 
-//     // let x = Array::range(0.0, 4.0, 1.0);
-//     // let y = Array::range(0.0, 5.0, 1.0);
-//     // let z = Array::range(0.0, 6.0, 1.0);
+    // let x = Array::range(0.0, 4.0, 1.0);
+    // let y = Array::range(0.0, 5.0, 1.0);
+    // let z = Array::range(0.0, 6.0, 1.0);
     
-//     // let (xx, yy, zz) = meshgrid_3d(x, y, z);
-//     // println!("{:?}", xx.slice(s![2, 3, 4]));
-//     // println!("{:?}", yy.slice(s![2, 3, 4]));
-//     // println!("{:?}", zz.slice(s![2, 3, 4]));
-//     //    println!("{:?}", y);
+    // let (xx, yy, zz) = meshgrid_3d(x, y, z);
+    // println!("{:?}", xx.slice(s![2, 3, 4]));
+    // println!("{:?}", yy.slice(s![2, 3, 4]));
+    // println!("{:?}", zz.slice(s![2, 3, 4]));
+    //    println!("{:?}", y);
 
-//     let x = Array::linspace(1.0, 0.0, 10);
-//     println!("{:?}", x);
+    let x = Array::linspace(1.0, 0.0, 1024);
+    let y = fft(x);
+    println!("{:?}", y);
     
-    
-// }
+}
