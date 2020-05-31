@@ -146,3 +146,5 @@ CMakeLists.txt.user*
 
 # Rust
 /target
+callgrind.out
+perf.data

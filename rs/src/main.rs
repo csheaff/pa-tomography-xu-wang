@@ -1,9 +1,10 @@
+#[macro_use(stack)]
 extern crate ndarray;
 use ndarray::prelude::*;
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
 use ndarray_stats::SummaryStatisticsExt;
-//use std::f64::consts::*;
+use std::f64::consts::*;
 //use std::path::PathBuf;
 use fftw::array::AlignedVec;
 use fftw::plan::*;
@@ -11,20 +12,17 @@ use fftw::types::*;
 use std::vec::Vec;
 use std::time::Instant;
 
-// fn complex2complex() {
-//     let n = 128;
-//     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
-//     let mut a = AlignedVec::new(n);
-//     let mut b = AlignedVec::new(n);
-//     let k0 = 2.0 * PI / n as f64;
-//     for i in 0..n {
-// 	a[i] = c64::new((k0 * i as f64).cos(), 0.0);
-//     }
-//     plan.c2c(&mut a, &mut b).unwrap();
-
-//     println!("hello world");
-
-// }
+fn complex2complex() {
+    let n = 128;
+    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
+    let mut a = AlignedVec::new(n);
+    let mut b = AlignedVec::new(n);
+    let k0 = 2.0 * PI / n as f64;
+    for i in 0..n {
+	a[i] = c64::new((k0 * i as f64).cos(), 0.0);
+    }
+    plan.c2c(&mut a, &mut b).unwrap();
+}
 
 
 fn complex2real() {
@@ -41,8 +39,6 @@ fn complex2real() {
     println!("{:?}", b);
 
     let c = Array::from(Vec::from(b.as_slice()));
-
-    println!("{:?}", c);
 }
 
 
@@ -127,20 +123,47 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 }
 
 
-// fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) {
-//     let res = 500e-6;
-//     let xf = Array::range(0.0, xd[0], xd[-1] * res, res);
-//     let yf = xf.clone();
-//     let zf = z_targ;
+fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) {
+    let c = 1484.0;
+    let res = 500e-6;
+    let xf = Array::range(xd[0], xd[xd.len() - 1] * res, res);
+    let yf = xf.clone();
+    let zf = array![z_targ];
+    let (Yf, Xf, Zf) = meshgrid_3d(yf, xf, zf);
+    let Zf2 = Zf.mapv(|Zf| Zf.powi(2));
+    let fs = 1.0 / (t[1] - t[0]);
+    let nfft = 2048;
+    let fv = (fs / 2.0) * Array::linspace(0.0, 1.0, (nfft / 2 + 1));
+    let fv2 = -1.0 * (fs / 2.0) * Array::linspace(1.0, 0.0, (nfft / 2 + 1));
+    let fv2_slice = fv2.slice(s![1..(fv2.len() - 1)]);
+    let fv3 = stack![Axis(0), fv, fv2_slice];
+    let k = 2.0 * PI * fv3 / c;
+
+    let ds = (2e-3).powi(2);
+    let pf = 0.0 * &k;  // make zeros array with length k.len()
+    let pnum = 0.0 * &Yf; 
+    let pden = 0.0 * &Yf;
+    let yd = xd.clone();
+
+    for xi in 0..xd.len() {
+	let X2 = (&Xf - xd[xi]);
+	let X2 = X2.mapv(|X2| X2.powi(2));
+	for yi in 0..yd.len() {
+	    let Y2 = (&Yf - xd[xi]);
+	    let Y2 = Y2.mapv(|Y2| Y2.powi(2));
+	    let dist = &X2 + &Y2;
+	    let dist = dist.mapv(|dist| dist.powi(2));
+	    let p = sigs.slice(s![.., xi, yi]);
+	    
+	}
+    }
     
+    
+    println!("{:?}", k)
+}
 
 
-
-
-// }
-
-
-fn main2() {
+fn main() {
     let before = Instant::now();
     //    complex2real()
 
@@ -165,8 +188,9 @@ fn main2() {
 	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ * 1e-3);
     }
    
-    println!("{:?}", sigs.mean());
-
+//    println!("{:?}", sigs.mean());
+    perf_tom(&sigs, &xd, &t, z_targ);
+    
     // Be sure to bench by running:
     // $ cargo build --release
     // $ ./target/release/pa-tom
@@ -175,21 +199,26 @@ fn main2() {
 
 
 
-fn main() {
+// fn main() {
 
-//    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
-//    let x = Array::range(0.0, 1300.0, 1.0);
-//    let x = [1.0,2.0,3.0];
-  //  let y = [5.0,6.0,7.0];
-    //let z = x - y;
+// //    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
+// //    let x = Array::range(0.0, 1300.0, 1.0);
+// //    let x = [1.0,2.0,3.0];
+//   //  let y = [5.0,6.0,7.0];
+//     //let z = x - y;
 
-    let x = Array::range(0.0, 4.0, 1.0);
-    let y = Array::range(0.0, 5.0, 1.0);
-    let z = Array::range(0.0, 6.0, 1.0);
+//     // let x = Array::range(0.0, 4.0, 1.0);
+//     // let y = Array::range(0.0, 5.0, 1.0);
+//     // let z = Array::range(0.0, 6.0, 1.0);
     
-    let (xx, yy, zz) = meshgrid_3d(x, y, z);
-    println!("{:?}", xx.slice(s![2, 3, 4]));
-    println!("{:?}", yy.slice(s![2, 3, 4]));
-    println!("{:?}", zz.slice(s![2, 3, 4]));
-//    println!("{:?}", y);
-}
+//     // let (xx, yy, zz) = meshgrid_3d(x, y, z);
+//     // println!("{:?}", xx.slice(s![2, 3, 4]));
+//     // println!("{:?}", yy.slice(s![2, 3, 4]));
+//     // println!("{:?}", zz.slice(s![2, 3, 4]));
+//     //    println!("{:?}", y);
+
+//     let x = Array::linspace(1.0, 0.0, 10);
+//     println!("{:?}", x);
+    
+    
+// }
