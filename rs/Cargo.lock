@@ -867,6 +867,19 @@ dependencies = [
 
 [[package]]
 name = "ndarray-stats"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19e8a82a01d7c20ee2edb5b77fff224c7cb2c39e5d12d8bd9d50a1edec57403e"
+dependencies = [
+ "itertools 0.7.11",
+ "ndarray 0.12.1",
+ "noisy_float",
+ "num-traits",
+ "rand 0.6.5",
+]
+
+[[package]]
+name = "ndarray-stats"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e3da4b73160713dbd0f05af78d31e398b9a9edf70b8c94551f668477dc70618"
@@ -878,6 +891,17 @@ dependencies = [
  "num-integer",
  "num-traits",
  "rand 0.7.3",
+]
+
+[[package]]
+name = "ndarray-vision"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "682d495c91f595ea3fd1851a85ebbb29402dbbf38c28b14e1be56ff5c5294704"
+dependencies = [
+ "ndarray 0.12.1",
+ "ndarray-stats 0.1.0",
+ "num-traits",
 ]
 
 [[package]]
@@ -1017,7 +1041,8 @@ dependencies = [
  "fftw-src",
  "ndarray 0.13.1",
  "ndarray-linalg",
- "ndarray-stats",
+ "ndarray-stats 0.3.0",
+ "ndarray-vision",
  "openblas-src",
 ]
 

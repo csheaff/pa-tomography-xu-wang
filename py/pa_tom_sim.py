@@ -9,6 +9,8 @@
 # mm in diameter and two that 4 mm in diameter. Note that all distances are in mm.
 
 import numpy as np
+import matplotlib
+matplotlib.use('WebAgg')
 import matplotlib.pyplot as plt
 from scipy import linalg
 from scipy import signal
@@ -120,14 +122,13 @@ def perfTomog(prec, xd, t, zTargs, c=1484):
             distind = distind.astype(int) #convert to integer for indexing
             p = prec[:,xi,yi]
             pf = ifft(-1j*k*fft(p,NFFT)) #apply ramp filter
-            if xi == 0 and yi == 0:
-                print(np.mean(distind))
-            b = 2*p-2*t*c*pf[0:len(p)]
+            b = 2*p - 2*t*c*pf[0:len(p)]
             b1 = b[distind-1]  #subtracted 1 to be consistent with Matlab result wherein indexing begins at 1    
             omega = (ds/dist**2)*Zf/dist
             pnum = pnum + omega*b1
             pden = pden + omega
         print('Reconstructing image with detector row',len(xd)-xi)
+
     pg = pnum/pden
     pgmax = pg[np.nonzero(np.abs(pg) == np.amax(abs(pg)))]   #np.amax(complex array) will return the element with maximum real value, not maximum absolute value as in Matlab
     pfnorm = np.real(pg/pgmax)
@@ -137,6 +138,11 @@ def tomPlot2D(data, x, y, dr):
     """Plot (1) image in dB with user-specified dynamic range, dr and (2) two orthogonal 1-D slices through middle of non-log data"""
     pfnormlog = 20*np.log10(np.abs(data))
     pfnormlog = np.transpose(np.squeeze(pfnormlog))  #reduce to 2-dimensions, transposed to match plot in paper
+
+    p = pfnormlog.copy()
+    p[p < -dr] = -dr
+    p = 255 * (p + dr) / dr
+    print(np.sum(p))
     
     fig1 = plt.figure()
     plt.imshow(pfnormlog, extent=[x[0]*1e3,x[-1]*1e3,y[-1]*1e3,y[0]*1e3], vmin=-dr, vmax=0, cmap='gray')
@@ -179,8 +185,9 @@ if __name__ == '__main__':
         print('Generating recorded signals arising from target', jj+1, 'of', tarInfo.shape[0])
         sigs = sigs + getSignals(tarInfo[jj,:], xd, t)
 
-    print(np.mean(sigs))
     pfnorm, xf, yf, zf = perfTomog(sigs, xd, t, zTargs*1e-3)
+    print(np.mean(sigs))
+    print(np.mean(pfnorm))
     
-    #tomPlot2D(pfnorm, xf, yf, 6)
+    tomPlot2D(pfnorm, xf, yf, 6)
     print(f"Elapsed time: {time.time() - start}")

@@ -5,12 +5,16 @@ use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
 use ndarray_stats::SummaryStatisticsExt;
 use std::f64::consts::*;
-//use std::path::PathBuf;
+use std::path::PathBuf;
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
 use std::vec::Vec;
 use std::time::Instant;
+use std::env::current_exe;
+use ndarray_vision::core::*;
+use ndarray_vision::format::netpbm::*;
+use ndarray_vision::format::*;
 
 
 fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
@@ -129,7 +133,7 @@ fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64
 }
 
 
-fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> Array3<f64> {
+fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>) -> Array3<f64> {
     // Clay this is all very slow and I don't know why.
     let yd = xd.clone();
     let det_len = 2e-3;
@@ -157,11 +161,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 		    let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
 		    let tar_rad = tar_info[3];
 		    let step_fn_arg = tar_rad - (r - c * t).mapv(f64::abs);
-		    //let step_fn_arg = t.mapv(f64::abs);  // why is mapv so slow??
 		    pa_sig = pa_sig + step_fn(&step_fn_arg) * (r - c * t) / (2.0 * r);
-		    // if yi == 0 && xi == 0 && m == 0 {
-		    // 	println!("{:?}", pa_sig.max()); //pa_sig.max());
-
 		    }
 		}
 	    let pr = pa_sig / n_subdet as f64;
@@ -173,8 +173,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>, z
 }
 
 
-//fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> (Array3<f64>, Array1<f64>, Array1<f64>, Array1<f64>) {
-fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) {
+fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) -> (Array3<f64>, Array1<f64>, Array1<f64>, Array1<f64>) {
     let c = 1484.0;
     let res = 500e-6;
     let xf = Array::range(xd[0], xd[xd.len() - 1] + res, res);
@@ -209,9 +208,6 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     	    let dist = &dist2.mapv(f64::sqrt);
     	    let distind = (fs / c) * dist;
     	    let distind = distind.mapv(|x| <f64>::round(x) as usize) - 1; // only subtracting 1 here to be consistent with python
-	    if xi == 0 && yi == 0 {
-		println!("{:}", distind.mean().unwrap());
-	    }
 	    
     	    let p = sigs.slice(s![.., xi, yi]).to_owned();
     	    let p_w = fft(&p, nfft);
@@ -219,31 +215,62 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     	    let p_filt = ifft(&p_filt_w);
 
     	    let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
-    	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * p.slice(s![..p.len()]);
+    	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * c * p_filt.slice(s![..p.len()]);   // 2nd term is CULPRIT
     	    let b1 = array_indexing_3d_complex(&b, &distind);
-    	    // let omega = (ds / dist2) * &Zf / dist;
-    	    // let omega = omega.mapv(|x| c64::new(x, 0.0)); // convert to complex
-    	    // pnum = pnum + &omega * &b1;
-    	    // pden = pden + omega;
+    	    let omega = (ds / dist2) * &Zf / dist;
+    	    let omega = omega.mapv(|x| c64::new(x, 0.0)); // convert to complex
+    	    pnum = pnum + &omega * &b1;
+    	    pden = pden + &omega;
+
     	}
     	println!("Reconstrucing image with detector row {}", xd.len() - xi);
     }
-    // let pg = pnum / pden;
-    // let pg_max_ind = pg.mapv(|x| x.norm()).argmax().unwrap(); // index of maximum magnitude
-    // let pg_max = pg[pg_max_ind];
-    // let pfnorm = (pg / pg_max).mapv(|x| x.re());
+    
+    let pg = pnum / pden;
+    let pg_max_ind = pg.mapv(|x| x.norm()).argmax().unwrap(); // index of maximum magnitude
+    let pg_max = pg[pg_max_ind];
+    let pfnorm = (pg / pg_max).mapv(|x| x.re());
 
-//    (pfnorm, xf, yf, zf)
+    (pfnorm, xf, yf, zf)
 }
+
+fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
+
+    let pfnormlog = 20.0 * pfnorm.mapv(|x| <f64>::log10(<f64>::abs(x)));
+    let pfnormlog = pfnormlog.mapv(|x| {
+	   if x < (-1.0 * dr) {
+	       -1.0 * dr
+	   }
+	   else {
+	       x
+	   }}
+    );
+    let pfnormlog = 255.0 * (pfnormlog + dr) / dr;
+    let pfnormlog = pfnormlog.mapv(|x| x as u8);
+//    let pfnormlog_slice = pfnormlog.slice(s![.., .., 0]);
+  //  println!("{:?}", pfnormlog_slice);
+    println!("{:?}", pfnormlog.sum());
+
+    // let d = Array3::<u8>::zeros((100, 100, 3));
     
-    
-  //  println!("{:?}", k)
-//}
+    // let image = Image::<u8, _>::from_data(d);
+
+	
+    // if let Ok(mut root) = current_exe() {
+    //     root.pop();
+    //     root.pop();
+    //     root.pop();
+    //     root.pop();
+
+    // 	let mut save_path = PathBuf::from(&root);
+    // 	save_path.push("images/recon.ppm");
+    // 	let ppm = PpmEncoder::new_plaintext_encoder();
+    // 	ppm.encode_file(&image, save_path).expect("Unable to encode ppm");
+}
 
 
 fn main() {
     let before = Instant::now();
-    //    complex2real()
 
     let z_targ = 15.0;
     let tar_info: Array2<f64> = 1e-3 * array![[18.0, 0.0, z_targ, 1.5]]; //,[-18.0, 0.0, z_targ, 1.5],[9.0, 0.0, z_targ, 1.5],[-9.0, 0.0, z_targ, 1.5],[0.0, 0.0, z_targ, 1.5],[0.0, 12.0, z_targ, 4.0],[0.0, -12.0, z_targ, 4.0]];
@@ -260,19 +287,18 @@ fn main() {
     let t = Array::range(0.0, 65e-6 + ts, ts);
 
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det, n_det));
-
     
     for n in 0..n_targ {
 	println!("Generating recorded signals arising from target {} of {}", n + 1, n_targ);
 	let ti_slice = tar_info.slice(s![n, ..]);
-	sigs = sigs + get_signals(&ti_slice, &xd, &t, z_targ);
+	sigs = sigs + get_signals(&ti_slice, &xd, &t);
     }
 
+    let (pfnorm, xf, yf, zf) = perf_tom(&sigs, &xd, &t, z_targ);
     println!("{:?}", sigs.mean().unwrap());
-    perf_tom(&sigs, &xd, &t, z_targ);
-//    let (pfnorm, xf, yf, zf) = perf_tom(&sigs, &xd, &t, z_targ);
-  //  println!("{:?}", pfnorm.mean().unwrap());
-    
+    println!("{:?}", pfnorm.mean().unwrap());
+
+    tom_plot(&pfnorm, &xf, &yf, 6.0);
     // Be sure to bench by running:
     // $ cargo build --release
     // $ ./target/release/pa-tom
