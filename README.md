@@ -1,7 +1,9 @@
 # Universal Backprojection Algorithm for Photoacoustic Computed Tomography
-Replication of the algorithm demonstrated in "Universal Backprojection Algorithm for Photoacoustic Computed Tomography" published by Xu and Wang (2005) which can be found here:
+Replication of the algorithm demonstrated in 
 
-https://authors.library.caltech.edu/67913/1/PhysRevE.71.016706.pdf
+Xu, Minghua, and Lihong V. Wang. "Universal back-projection algorithm for photoacoustic computed tomography." Physical Review E 71.1 (2005): 016706.
+
+which can be found [here](https://authors.library.caltech.edu/67913/1/PhysRevE.71.016706.pdf).
 
 This is implemented in both Python and Rust. The py file operates with the base conda distribution. To observe speedups with Rust, build with `cargo build --release`.
 
