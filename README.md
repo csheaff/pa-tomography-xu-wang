@@ -3,6 +3,6 @@ Replication of the algorithm demonstrated in "Universal Backprojection Algorithm
 
 https://authors.library.caltech.edu/67913/1/PhysRevE.71.016706.pdf
 
-This is implemented in both Python and Rust. The py file should operate with the base conda distribution. Be sure to build the rust project with `--release` to observe speedups.
+This is implemented in both Python and Rust. The py file operates with the base conda distribution. To observe speedups with Rust, build with `cargo build --release`.
 
 ![alt text](./figure_1.png)
