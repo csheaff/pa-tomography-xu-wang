@@ -50,8 +50,7 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
 }
 
 fn step_fn(x: &Array1<f64>) -> Array1<f64> {
-    let y = 0.5 * (x.mapv(f64::signum) + 1.0);
-    y
+    return 0.5 * (x.mapv(f64::signum) + 1.0);
 }
 
 fn meshgrid_3d(
@@ -179,7 +178,7 @@ fn perf_tom(
             let omega = (ds / dist2) * &Zf / dist;
             let omega = omega.mapv(|x| c64::new(x, 0.0)); // convert to complex
             pnum = pnum + &omega * &b1;
-            pden = pden + &omega;
+            pden += &omega;
         }
         //    	println!("Reconstrucing image with detector row {}", xd.len() - xi);
     }
