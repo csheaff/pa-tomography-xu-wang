@@ -85,19 +85,6 @@ fn meshgrid_3d(x1: &Array1<f64>, x2: &Array1<f64>, x3: &Array1<f64>) -> (Array3<
 }
 
 
-fn array_indexing_3d(x: &Array1<f64>, ind: &Array3<usize>) -> Array3<f64> {
-    let mut y = Array3::<f64>::zeros(ind.raw_dim());
-    for i in 0..ind.shape()[0] {
-	for j in 0..ind.shape()[1] {
-	    for k in 0..ind.shape()[2] {
-		y[[i, j, k]] = x[ind[[i, j, k]]];
-	    }
-	}
-    }
-    y
-}
-
-
 fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64> {
     let mut y = Array3::<c64>::zeros(ind.raw_dim());
     for i in 0..ind.shape()[0] {
@@ -178,7 +165,7 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     	    let dist2 = &X2 + &Y2 + &Z2;
     	    let dist = &dist2.mapv(f64::sqrt);
     	    let distind = (fs / c) * dist;
-    	    let distind = distind.mapv(|x| <f64>::round(x) as usize) - 1; // only subtracting 1 here to be consistent with python
+    	    let distind = distind.mapv(|x| <f64>::round(x) as usize);
     	    let p = sigs.slice(s![.., xi, yi]).to_owned();
     	    let p_w = fft(&p, nfft);
     	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
@@ -191,7 +178,7 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     	    pnum = pnum + &omega * &b1;
     	    pden = pden + &omega;
     	}
-    	println!("Reconstrucing image with detector row {}", xd.len() - xi);
+//    	println!("Reconstrucing image with detector row {}", xd.len() - xi);
     }
     let pg = pnum / pden;
     let pg_max_ind = pg.mapv(|x| x.norm()).argmax().unwrap(); // index of maximum magnitude
@@ -216,8 +203,8 @@ fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
     let imgx = pfnormlog.shape()[0] as u32;
     let imgy = pfnormlog.shape()[1] as u32;
     let pfnormlog = pfnormlog.slice(s![.., .., 0]).to_owned().into_raw_vec(); // get plane
-    let mut imgbuf = image::GrayImage::from_vec(imgx, imgy, pfnormlog);
-    imgbuf.unwrap().save("pfnormlog.png");
+    let imgbuf = image::GrayImage::from_vec(imgx, imgy, pfnormlog);
+    imgbuf.unwrap().save("pfnormlog-rs.png");
 }
 
 
@@ -240,12 +227,13 @@ fn main() {
 	let ti_slice = tar_info.slice(s![n, ..]);
 	sigs = sigs + get_signals(&ti_slice, &xd, &t);
     }
+    println!("Reconstructing targets");
     let (pfnorm, xf, yf, zf) = perf_tom(&sigs, &xd, &t, z_targ);
-//    println!("{:?}", sigs.mean().unwrap());
-//    println!("{:?}", pfnorm.mean().unwrap());
+    println!("Mean value of all recorded signals = {:?}", sigs.mean().unwrap());
+    println!("Mean value of reconstructed volume = {:?}", pfnorm.mean().unwrap());
     tom_plot(&pfnorm, &xf, &yf, 6.0);
     // Be sure to bench by running:
     // $ cargo build --release
     // $ ./target/release/pa-tom
-    println!("Elapsed time: {:.2?}", before.elapsed());
+    println!("Elapsed time: {:.2?} s", before.elapsed());
 }
