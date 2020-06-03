@@ -6,7 +6,6 @@ use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
 //use ndarray_stats::SummaryStatisticsExt;
 use std::f64::consts::*;
-//use std::path::PathBuf;
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
@@ -28,15 +27,10 @@ fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
 	    x2[i] = c64::new(0.0, 0.0);
 	}
     }
-
     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
-
     let mut xfft = AlignedVec::new(n);
-
     plan.c2c(&mut x2, &mut xfft).unwrap();
-
     let xfft = Array1::<c64>::from(Vec::from(xfft.as_slice()));
-
     xfft
 }
 
@@ -45,25 +39,17 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
     // this will normalize, just like scipy.fftpack.ifft
     
     let n = xfft.len();
-
    // not sure how to convert Array1 to AlignedVec other than element-by-element
     let mut xfft2 = AlignedVec::new(n);
     for i in 0..n {
 	    xfft2[i] = xfft[i];
     }
-
     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Backward, Flag::Measure).unwrap();
-
     let mut x = AlignedVec::new(n);
-
     plan.c2c(&mut xfft2, &mut x).unwrap();
-
     let x = Array1::<c64>::from(Vec::from(x.as_slice()));
-
     let x = x / c64::new(n as f64, 0.0);
-
     x
-    
 }
 
 
@@ -74,32 +60,27 @@ fn step_fn(x: &Array1<f64>) -> Array1<f64> {
 
 
 fn meshgrid_3d(x1: &Array1<f64>, x2: &Array1<f64>, x3: &Array1<f64>) -> (Array3<f64>, Array3<f64>, Array3<f64>) {
-
     let mut xx = Array3::<f64>::zeros((x2.len(), x1.len(), x3.len()));
     let mut yy = xx.clone();
     let mut zz = xx.clone();
-
     for m in 0..x2.len() {
 	for n in 0..x3.len() {
 	    let mut slice = xx.slice_mut(s![m, .., n]);
 	    slice.assign(&x1);
 	}
     }
-
     for m in 0..x1.len() {
     	for n in 0..x3.len() {
     	    let mut slice = yy.slice_mut(s![.., m, n]);
     	    slice.assign(&x2);
     	}
     }
-
     for m in 0..x2.len() {
     	for n in 0..x1.len() {
     	    let mut slice = zz.slice_mut(s![m, n, ..]);
     	    slice.assign(&x3);
     	}
     }
-
     (xx, yy, zz)
 }
 
@@ -131,7 +112,6 @@ fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64
 
 
 fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>) -> Array3<f64> {
-    // Clay this is all very slow and I don't know why.
     let yd = xd.clone();
     let det_len = 2e-3;
     let n_subdet = 25;
@@ -139,16 +119,13 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>) -
     let subdet_pitch = det_len / (n_subdet as f64).sqrt();
     let subdet_ind = Array::range(0.0, n_subdet_perdim as f64, 1.0) - (n_subdet_perdim as f64 - 1.0) / 2.0;
     let subdet_offset = subdet_pitch * &subdet_ind;
-    
     let fs = 1.0 / (t[1] - t[0]);
     let fc = 4e6;
     let c = 1484.0;
-    
     let n_det_x = xd.len();
     let n_det_y = yd.len();
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
     for xi in 0..n_det_x {
-//	println!("{ }", xi);
 	for yi in 0..n_det_y {
 	    let mut pa_sig = Array1::<f64>::zeros(t.len());
 	    for m in 0..n_subdet_perdim {
@@ -185,16 +162,13 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let fv2_slice = fv2.slice(s![1..(fv2.len() - 1)]);
     let fv3 = stack![Axis(0), fv, fv2_slice];
     let k = 2.0 * PI * fv3 / c;
-
     let ds = (2e-3).powi(2);
     let pf = 0.0 * &k;  // make zeros array with length k.len()
     let mut pnum = Array3::<c64>::zeros(Yf.raw_dim());
     let mut pden = Array3::<c64>::zeros(Yf.raw_dim());
     let yd = xd.clone();
-
     let k = k.mapv(|x| c64::new(x, 0.0)); // convert to complex
     let t = t.mapv(|x| c64::new(x, 0.0)); // convert to complex
-
     for xi in 0..xd.len() {
     	let X2 = &Xf - xd[xi];
     	let X2 = X2.mapv(|X2| X2.powi(2));
@@ -205,34 +179,29 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     	    let dist = &dist2.mapv(f64::sqrt);
     	    let distind = (fs / c) * dist;
     	    let distind = distind.mapv(|x| <f64>::round(x) as usize) - 1; // only subtracting 1 here to be consistent with python
-	    
     	    let p = sigs.slice(s![.., xi, yi]).to_owned();
     	    let p_w = fft(&p, nfft);
     	    let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
     	    let p_filt = ifft(&p_filt_w);
-
     	    let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
-    	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * c * p_filt.slice(s![..p.len()]);   // 2nd term is CULPRIT
+    	    let b = c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * c * p_filt.slice(s![..p.len()]);
     	    let b1 = array_indexing_3d_complex(&b, &distind);
     	    let omega = (ds / dist2) * &Zf / dist;
     	    let omega = omega.mapv(|x| c64::new(x, 0.0)); // convert to complex
     	    pnum = pnum + &omega * &b1;
     	    pden = pden + &omega;
-
     	}
     	println!("Reconstrucing image with detector row {}", xd.len() - xi);
     }
-    
     let pg = pnum / pden;
     let pg_max_ind = pg.mapv(|x| x.norm()).argmax().unwrap(); // index of maximum magnitude
     let pg_max = pg[pg_max_ind];
     let pfnorm = (pg / pg_max).mapv(|x| x.re());
-
     (pfnorm, xf, yf, zf)
 }
 
-fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
 
+fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
     let pfnormlog = 20.0 * pfnorm.mapv(|x| <f64>::log10(<f64>::abs(x)));
     let pfnormlog = pfnormlog.mapv(|x| {
 	   if x < (-1.0 * dr) {
@@ -244,126 +213,39 @@ fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
     );
     let pfnormlog = 255.0 * (pfnormlog + dr) / dr;
     let pfnormlog = pfnormlog.mapv(|x| x as u8);
-//    let pfnormlog_slice = pfnormlog.slice(s![.., .., 0]);
-  //  println!("{:?}", pfnormlog_slice);
-    println!("{:?}", pfnormlog.sum());
-
-    // let imgx = pfnormlog.shape()[0] as u32;
-    // let imgy = pfnormlog.shape()[1] as u32;
-    // let z: usize = 0;
-    // let mut img = image::GrayImage::new(imgx as u32, imgy as u32);
-    // for x in 0..imgx {
-    // 	for y in 0..imgy {
-    // 	    val = pfnormlog[[x as u32, y as u32, z as u32]]; //.as_slice(s![x, y, z]); //.slice(s![x, y as usize]);
-    //         img.put_pixel(x, y, image::Luma(val));
-    // 	}
-    // }
-
     let imgx = pfnormlog.shape()[0] as u32;
     let imgy = pfnormlog.shape()[1] as u32;
-    let pfnormlog = pfnormlog.slice(s![.., .., 0]).to_owned().into_raw_vec();
+    let pfnormlog = pfnormlog.slice(s![.., .., 0]).to_owned().into_raw_vec(); // get plane
     let mut imgbuf = image::GrayImage::from_vec(imgx, imgy, pfnormlog);
-    // for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
-    // 	val = pfnormlog[x, y];
-    //     *pixel = image::Luma(val);
-    // }
     imgbuf.unwrap().save("pfnormlog.png");
-    
-    // let d = Array3::<u8>::zeros((100, 100, 3));
-    
-    // let image = Image::<u8, _>::from_data(d);
-
-	
-    // if let Ok(mut root) = current_exe() {
-    //     root.pop();
-    //     root.pop();
-    //     root.pop();
-    //     root.pop();
-
-    // 	let mut save_path = PathBuf::from(&root);
-    // 	save_path.push("images/recon.ppm");
-    // 	let ppm = PpmEncoder::new_plaintext_encoder();
-    // 	ppm.encode_file(&image, save_path).expect("Unable to encode ppm");
 }
 
 
 fn main() {
     let before = Instant::now();
-
     let z_targ = 15.0;
     let tar_info: Array2<f64> = 1e-3 * array![[18.0, 0.0, z_targ, 1.5],[-18.0, 0.0, z_targ, 1.5],[9.0, 0.0, z_targ, 1.5],[-9.0, 0.0, z_targ, 1.5],[0.0, 0.0, z_targ, 1.5],[0.0, 12.0, z_targ, 4.0],[0.0, -12.0, z_targ, 4.0]];
     let z_targ = z_targ * 1e-3;
     let n_targ = tar_info.shape()[0];
-    
     let aper_len = 60e-3;
     let det_pitch = (2.0 / 3.0) * 1e-3;
     let xd = Array::range(-aper_len / 2.0, aper_len / 2.0 + det_pitch, det_pitch);
     let n_det = xd.len();
-
     let fs = 20e6;
     let ts = 1.0 / fs;
     let t = Array::range(0.0, 65e-6 + ts, ts);
-
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det, n_det));
-    
     for n in 0..n_targ {
 	println!("Generating recorded signals arising from target {} of {}", n + 1, n_targ);
 	let ti_slice = tar_info.slice(s![n, ..]);
 	sigs = sigs + get_signals(&ti_slice, &xd, &t);
     }
-
     let (pfnorm, xf, yf, zf) = perf_tom(&sigs, &xd, &t, z_targ);
-    println!("{:?}", sigs.mean().unwrap());
-    println!("{:?}", pfnorm.mean().unwrap());
-
+//    println!("{:?}", sigs.mean().unwrap());
+//    println!("{:?}", pfnorm.mean().unwrap());
     tom_plot(&pfnorm, &xf, &yf, 6.0);
     // Be sure to bench by running:
     // $ cargo build --release
     // $ ./target/release/pa-tom
     println!("Elapsed time: {:.2?}", before.elapsed());
-}
-
-
-
-fn mai2n() {
-
-//    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
-//    let x = Array::range(0.0, 1300.0, 1.0);
-//    let x = [1.0,2.0,3.0];
-  //  let y = [5.0,6.0,7.0];
-    //let z = x - y;
-
-    // let x = Array::range(0.0, 3.0, 1.0);
-    // let y = Array::range(0.0, 5.0, 1.0);
-    // let z = Array::range(0.0, 6.0, 1.0);
-    
-    // let (xx, yy, zz) = meshgrid_3d(&x, &y, &z);
-    // println!("{:?}", zz.mean().unwrap());
-    // println!("{:?}", yy.slice(s![2, 3, 4]));
-    // println!("{:?}", zz.slice(s![2, 3, 4]));
-    
-
-    // let x = Array::linspace(1.0, 0.0, 1024);
-    // let y = fft(&x, 1024);
-    // let z = ifft(&y);
-
-    
-    // let a = array![[[ 1,  2,  3],     // -- 2 rows  \_
-    //             [ 4,  5,  6]],    // --         /
-    //            [[ 7,  8,  9],     //            \_ 2 submatrices
-    //             [1, 1, 2]]];  // 
-    // let x = x.mapv(|x| c64::new(x, 0.0)); // convert to complex
-    // let aa = a.mapv(|hi| hi as usize);
-    // let yo = array_indexing_3d_complex(&x, &
-    
-
-    
-//    println!("{:?}", z);
-    //    println!("{:?}", z);
-    //let y = Array3::zeros((100, 100, 3));
-//    println!("{:?}", y);
-//    let x = Image::from_data(y);
-
-    
-    
 }
