@@ -1,20 +1,17 @@
 #[macro_use(stack)]
 extern crate ndarray;
+extern crate image;
 use ndarray::prelude::*;
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
-use ndarray_stats::SummaryStatisticsExt;
+//use ndarray_stats::SummaryStatisticsExt;
 use std::f64::consts::*;
-use std::path::PathBuf;
+//use std::path::PathBuf;
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
 use std::vec::Vec;
 use std::time::Instant;
-use std::env::current_exe;
-use ndarray_vision::core::*;
-use ndarray_vision::format::netpbm::*;
-use ndarray_vision::format::*;
 
 
 fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
@@ -151,7 +148,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd:  &Array1<f64>, t: &Array1<f64>) -
     let n_det_y = yd.len();
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
     for xi in 0..n_det_x {
-	println!("{ }", xi);
+//	println!("{ }", xi);
 	for yi in 0..n_det_y {
 	    let mut pa_sig = Array1::<f64>::zeros(t.len());
 	    for m in 0..n_subdet_perdim {
@@ -183,8 +180,8 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let Z2 = Zf.mapv(|Zf| Zf.powi(2));
     let fs = 1.0 / (t[1] - t[0]);
     let nfft = 2048;
-    let fv = (fs / 2.0) * Array::linspace(0.0, 1.0, (nfft / 2 + 1));
-    let fv2 = -1.0 * (fs / 2.0) * Array::linspace(1.0, 0.0, (nfft / 2 + 1));
+    let fv = (fs / 2.0) * Array::linspace(0.0, 1.0, nfft / 2 + 1);
+    let fv2 = -1.0 * (fs / 2.0) * Array::linspace(1.0, 0.0, nfft / 2 + 1);
     let fv2_slice = fv2.slice(s![1..(fv2.len() - 1)]);
     let fv3 = stack![Axis(0), fv, fv2_slice];
     let k = 2.0 * PI * fv3 / c;
@@ -199,10 +196,10 @@ fn perf_tom(sigs: &Array3<f64>, xd: &Array1<f64>, t: &Array1<f64>, z_targ: f64) 
     let t = t.mapv(|x| c64::new(x, 0.0)); // convert to complex
 
     for xi in 0..xd.len() {
-    	let X2 = (&Xf - xd[xi]);
+    	let X2 = &Xf - xd[xi];
     	let X2 = X2.mapv(|X2| X2.powi(2));
     	for yi in 0..yd.len() {
-    	    let Y2 = (&Yf - yd[yi]);
+    	    let Y2 = &Yf - yd[yi];
     	    let Y2 = Y2.mapv(|Y2| Y2.powi(2));
     	    let dist2 = &X2 + &Y2 + &Z2;
     	    let dist = &dist2.mapv(f64::sqrt);
@@ -251,6 +248,27 @@ fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
   //  println!("{:?}", pfnormlog_slice);
     println!("{:?}", pfnormlog.sum());
 
+    // let imgx = pfnormlog.shape()[0] as u32;
+    // let imgy = pfnormlog.shape()[1] as u32;
+    // let z: usize = 0;
+    // let mut img = image::GrayImage::new(imgx as u32, imgy as u32);
+    // for x in 0..imgx {
+    // 	for y in 0..imgy {
+    // 	    val = pfnormlog[[x as u32, y as u32, z as u32]]; //.as_slice(s![x, y, z]); //.slice(s![x, y as usize]);
+    //         img.put_pixel(x, y, image::Luma(val));
+    // 	}
+    // }
+
+    let imgx = pfnormlog.shape()[0] as u32;
+    let imgy = pfnormlog.shape()[1] as u32;
+    let pfnormlog = pfnormlog.slice(s![.., .., 0]).to_owned().into_raw_vec();
+    let mut imgbuf = image::GrayImage::from_vec(imgx, imgy, pfnormlog);
+    // for (x, y, pixel) in imgbuf.enumerate_pixels_mut() {
+    // 	val = pfnormlog[x, y];
+    //     *pixel = image::Luma(val);
+    // }
+    imgbuf.unwrap().save("pfnormlog.png");
+    
     // let d = Array3::<u8>::zeros((100, 100, 3));
     
     // let image = Image::<u8, _>::from_data(d);
@@ -273,7 +291,7 @@ fn main() {
     let before = Instant::now();
 
     let z_targ = 15.0;
-    let tar_info: Array2<f64> = 1e-3 * array![[18.0, 0.0, z_targ, 1.5]]; //,[-18.0, 0.0, z_targ, 1.5],[9.0, 0.0, z_targ, 1.5],[-9.0, 0.0, z_targ, 1.5],[0.0, 0.0, z_targ, 1.5],[0.0, 12.0, z_targ, 4.0],[0.0, -12.0, z_targ, 4.0]];
+    let tar_info: Array2<f64> = 1e-3 * array![[18.0, 0.0, z_targ, 1.5],[-18.0, 0.0, z_targ, 1.5],[9.0, 0.0, z_targ, 1.5],[-9.0, 0.0, z_targ, 1.5],[0.0, 0.0, z_targ, 1.5],[0.0, 12.0, z_targ, 4.0],[0.0, -12.0, z_targ, 4.0]];
     let z_targ = z_targ * 1e-3;
     let n_targ = tar_info.shape()[0];
     
@@ -307,7 +325,7 @@ fn main() {
 
 
 
-fn main2() {
+fn mai2n() {
 
 //    let x = array![-1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0];
 //    let x = Array::range(0.0, 1300.0, 1.0);
@@ -315,12 +333,12 @@ fn main2() {
   //  let y = [5.0,6.0,7.0];
     //let z = x - y;
 
-    let x = Array::range(0.0, 3.0, 1.0);
-    let y = Array::range(0.0, 5.0, 1.0);
-    let z = Array::range(0.0, 6.0, 1.0);
+    // let x = Array::range(0.0, 3.0, 1.0);
+    // let y = Array::range(0.0, 5.0, 1.0);
+    // let z = Array::range(0.0, 6.0, 1.0);
     
-    let (xx, yy, zz) = meshgrid_3d(&x, &y, &z);
-    println!("{:?}", zz.mean().unwrap());
+    // let (xx, yy, zz) = meshgrid_3d(&x, &y, &z);
+    // println!("{:?}", zz.mean().unwrap());
     // println!("{:?}", yy.slice(s![2, 3, 4]));
     // println!("{:?}", zz.slice(s![2, 3, 4]));
     
@@ -341,6 +359,11 @@ fn main2() {
 
     
 //    println!("{:?}", z);
-//    println!("{:?}", z);
+    //    println!("{:?}", z);
+    //let y = Array3::zeros((100, 100, 3));
+//    println!("{:?}", y);
+//    let x = Image::from_data(y);
+
+    
     
 }
