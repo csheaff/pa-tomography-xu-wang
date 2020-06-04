@@ -1,5 +1,6 @@
 use ndarray::prelude::*;
 use ndarray::stack;
+use ndarray::Zip;
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
                                 //use ndarray_stats::SummaryStatisticsExt;
@@ -82,15 +83,7 @@ fn meshgrid_3d(
 }
 
 fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64> {
-    let mut y = Array3::<c64>::zeros(ind.raw_dim());
-    for i in 0..ind.shape()[0] {
-        for j in 0..ind.shape()[1] {
-            for k in 0..ind.shape()[2] {
-                y[[i, j, k]] = x[ind[[i, j, k]]];
-            }
-        }
-    }
-    y
+    Zip::from(ind).apply_collect(|idx| x[*idx])
 }
 
 fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) -> Array3<f64> {
