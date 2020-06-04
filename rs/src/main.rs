@@ -47,7 +47,7 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
     x / c64::new(n as f64, 0.0)
 }
 
-fn step_fn(x: &Array1<f64>) -> Array1<f64> {
+fn step_fn(x: Array1<f64>) -> Array1<f64> {
     0.5 * (x.mapv(f64::signum) + 1.0)
 }
 
@@ -109,7 +109,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
                     let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
                     let tar_rad = tar_info[3];
                     let step_fn_arg = tar_rad - (r - c * t).mapv(f64::abs);
-                    pa_sig = pa_sig + step_fn(&step_fn_arg) * (r - c * t) / (2.0 * r);
+                    pa_sig = pa_sig + step_fn(step_fn_arg) * (r - c * t) / (2.0 * r);
                 }
             }
             let pr = pa_sig / n_subdet as f64;
