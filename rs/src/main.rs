@@ -237,7 +237,6 @@ fn main() {
     );
     tom_plot(&pfnorm, &xf, &yf, 6.0);
     // Be sure to bench by running:
-    // $ cargo build --release
-    // $ ./target/release/pa-tom
+    // $ cargo run --release
     println!("Elapsed time: {:.2?} s", before.elapsed());
 }
