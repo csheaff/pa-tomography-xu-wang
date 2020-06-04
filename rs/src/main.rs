@@ -6,6 +6,7 @@ use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
+use num_integer::Roots;
 use std::f64::consts::*;
 use std::time::Instant;
 use std::vec::Vec;
@@ -96,7 +97,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
     let yd = xd.clone();
     let det_len = 2e-3;
     let n_subdet = 25;
-    let n_subdet_perdim = (n_subdet as f64).sqrt() as usize;
+    let n_subdet_perdim = n_subdet.sqrt();
     let subdet_pitch = det_len / (n_subdet as f64).sqrt();
     let subdet_ind =
         Array::range(0.0, n_subdet_perdim as f64, 1.0) - (n_subdet_perdim as f64 - 1.0) / 2.0;
