@@ -17,17 +17,14 @@ fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
 
     // not sure how to convert Array1 to AlignedVec other than element-by-element
     // pad array if n > x.len()
-    let mut x2 = AlignedVec::new(n);
-    for i in 0..n {
-        if i < x.len() {
-            x2[i] = c64::new(x[i], 0.0); // c64 - complex datatype with args (real component, imag component)
-        } else {
-            x2[i] = c64::new(0.0, 0.0);
-        }
+    let mut xs_aligned = AlignedVec::new(n);
+    for (x_aligned, &x) in xs_aligned.iter_mut().zip(x) {
+        *x_aligned = c64::new(x, 0.0);
     }
+
     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
     let mut xfft = AlignedVec::new(n);
-    plan.c2c(&mut x2, &mut xfft).unwrap();
+    plan.c2c(&mut xs_aligned, &mut xfft).unwrap();
     Array1::<c64>::from(Vec::from(xfft.as_slice()))
 }
 
