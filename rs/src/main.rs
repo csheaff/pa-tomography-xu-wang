@@ -1,6 +1,4 @@
-use ndarray::prelude::*;
-use ndarray::stack;
-use ndarray::Zip;
+use ndarray::{prelude::*, stack, Zip};
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
                                 //use ndarray_stats::SummaryStatisticsExt;
