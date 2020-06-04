@@ -10,7 +10,6 @@ use fftw::types::*;
 use num_integer::Roots;
 use std::f64::consts::PI;
 use std::time::Instant;
-use std::vec::Vec;
 
 fn fft_priv(x: &Array1<c64>, n: usize, sign: Sign) -> Array1<c64> {
     let mut xfft = AlignedVec::new(n);
