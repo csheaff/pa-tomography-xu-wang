@@ -12,14 +12,14 @@ use std::f64::consts::PI;
 use std::time::Instant;
 use std::vec::Vec;
 
-fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
+fn fft(x: &Array1<c64>, n: usize) -> Array1<c64> {
     // this is unnormalized, just like scipy.fftpack.fft
 
     // not sure how to convert Array1 to AlignedVec other than element-by-element
     // pad array if n > x.len()
     let mut xs_aligned = AlignedVec::new(n);
     for (x_aligned, &x) in xs_aligned.iter_mut().zip(x) {
-        *x_aligned = c64::new(x, 0.0);
+        *x_aligned = x;
     }
 
     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
@@ -155,10 +155,10 @@ fn perf_tom(
             let distind = (fs / c) * dist;
             let distind = distind.mapv(|x| <f64>::round(x) as usize);
             let p = sigs.slice(s![.., xi, yi]).to_owned();
+            let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
             let p_w = fft(&p, nfft);
             let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
             let p_filt = ifft(&p_filt_w);
-            let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
             let b =
                 c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * c * p_filt.slice(s![..p.len()]);
             let b1 = array_indexing_3d_complex(&b, &distind);
