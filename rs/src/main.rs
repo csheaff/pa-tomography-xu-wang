@@ -28,8 +28,7 @@ fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
     let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
     let mut xfft = AlignedVec::new(n);
     plan.c2c(&mut x2, &mut xfft).unwrap();
-    let xfft = Array1::<c64>::from(Vec::from(xfft.as_slice()));
-    xfft
+    Array1::<c64>::from(Vec::from(xfft.as_slice()))
 }
 
 fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
@@ -45,8 +44,7 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
     let mut x = AlignedVec::new(n);
     plan.c2c(&mut xfft2, &mut x).unwrap();
     let x = Array1::<c64>::from(Vec::from(x.as_slice()));
-    let x = x / c64::new(n as f64, 0.0);
-    x
+    x / c64::new(n as f64, 0.0)
 }
 
 fn step_fn(x: &Array1<f64>) -> Array1<f64> {
