@@ -180,7 +180,7 @@ fn perf_tom(
 }
 
 fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
-    let pfnormlog = 20.0 * pfnorm.mapv(|x| <f64>::log10(<f64>::abs(x)));
+    let pfnormlog = 20.0 * pfnorm.mapv(|x| x.abs().log10());
     let pfnormlog = pfnormlog.mapv(|x| if x < (-1.0 * dr) { -1.0 * dr } else { x });
     let pfnormlog = 255.0 * (pfnormlog + dr) / dr;
     let pfnormlog = pfnormlog.mapv(|x| x as u8);
