@@ -1,7 +1,6 @@
-#[macro_use(stack)]
-extern crate ndarray;
 extern crate image;
 use ndarray::prelude::*;
+use ndarray::stack;
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
                                 //use ndarray_stats::SummaryStatisticsExt;
