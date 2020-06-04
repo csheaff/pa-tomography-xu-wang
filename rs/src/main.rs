@@ -1,4 +1,3 @@
-extern crate image;
 use ndarray::prelude::*;
 use ndarray::stack;
 use ndarray_linalg::*;
