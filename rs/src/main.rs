@@ -50,7 +50,7 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
 }
 
 fn step_fn(x: &Array1<f64>) -> Array1<f64> {
-    return 0.5 * (x.mapv(f64::signum) + 1.0);
+    0.5 * (x.mapv(f64::signum) + 1.0)
 }
 
 fn meshgrid_3d(
