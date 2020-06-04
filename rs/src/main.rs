@@ -8,7 +8,7 @@ use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
 use num_integer::Roots;
-use std::f64::consts::*;
+use std::f64::consts::PI;
 use std::time::Instant;
 use std::vec::Vec;
 
