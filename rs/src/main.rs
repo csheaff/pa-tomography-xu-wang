@@ -12,33 +12,29 @@ use std::f64::consts::PI;
 use std::time::Instant;
 use std::vec::Vec;
 
-fn fft(x: &Array1<c64>, n: usize) -> Array1<c64> {
-    // this is unnormalized, just like scipy.fftpack.fft
-
+fn fft_priv(x: &Array1<c64>, n: usize, sign: Sign) -> Array1<c64> {
+    let mut xfft = AlignedVec::new(n);
     let mut xs_aligned = AlignedVec::new(n);
     for (x_aligned, &x) in xs_aligned.iter_mut().zip(x) {
         *x_aligned = x;
     }
 
-    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
-    let mut xfft = AlignedVec::new(n);
+    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], sign, Flag::Measure).unwrap();
+
     plan.c2c(&mut xs_aligned, &mut xfft).unwrap();
     Array1::<c64>::from(Vec::from(xfft.as_slice()))
 }
 
-fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
+fn fft(x: &Array1<c64>, n: usize) -> Array1<c64> {
+    // this is unnormalized, just like scipy.fftpack.fft
+
+    fft_priv(x, n, Sign::Forward)
+}
+
+fn ifft(x: &Array1<c64>) -> Array1<c64> {
     // this will normalize, just like scipy.fftpack.ifft
 
-    let n = xfft.len();
-    let mut xfft2 = AlignedVec::new(n);
-    for i in 0..n {
-        xfft2[i] = xfft[i];
-    }
-    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Backward, Flag::Measure).unwrap();
-    let mut x = AlignedVec::new(n);
-    plan.c2c(&mut xfft2, &mut x).unwrap();
-    let x = Array1::<c64>::from(Vec::from(x.as_slice()));
-    x / c64::new(n as f64, 0.0)
+    fft_priv(x, x.len(), Sign::Backward) / c64::new(x.len() as f64, 0.0)
 }
 
 fn step_fn(x: Array1<f64>) -> Array1<f64> {
