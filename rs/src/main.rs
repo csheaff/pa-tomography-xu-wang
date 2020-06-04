@@ -15,8 +15,6 @@ use std::vec::Vec;
 fn fft(x: &Array1<c64>, n: usize) -> Array1<c64> {
     // this is unnormalized, just like scipy.fftpack.fft
 
-    // not sure how to convert Array1 to AlignedVec other than element-by-element
-    // pad array if n > x.len()
     let mut xs_aligned = AlignedVec::new(n);
     for (x_aligned, &x) in xs_aligned.iter_mut().zip(x) {
         *x_aligned = x;
@@ -32,7 +30,6 @@ fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
     // this will normalize, just like scipy.fftpack.ifft
 
     let n = xfft.len();
-    // not sure how to convert Array1 to AlignedVec other than element-by-element
     let mut xfft2 = AlignedVec::new(n);
     for i in 0..n {
         xfft2[i] = xfft[i];
