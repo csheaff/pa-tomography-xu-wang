@@ -1,56 +1,41 @@
-#[macro_use(stack)]
-extern crate ndarray;
-extern crate image;
-use ndarray::prelude::*;
+use ndarray::{prelude::*, stack, Zip};
 use ndarray_linalg::*;
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
                                 //use ndarray_stats::SummaryStatisticsExt;
 use fftw::array::AlignedVec;
 use fftw::plan::*;
 use fftw::types::*;
-use std::f64::consts::*;
+use num_integer::Roots;
+use std::f64::consts::PI;
 use std::time::Instant;
-use std::vec::Vec;
 
-fn fft(x: &Array1<f64>, n: usize) -> Array1<c64> {
+fn fft_priv(x: &Array1<c64>, n: usize, sign: Sign) -> Array1<c64> {
+    let mut xfft = AlignedVec::new(n);
+    let mut xs_aligned = AlignedVec::new(n);
+    for (x_aligned, &x) in xs_aligned.iter_mut().zip(x) {
+        *x_aligned = x;
+    }
+
+    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], sign, Flag::Measure).unwrap();
+
+    plan.c2c(&mut xs_aligned, &mut xfft).unwrap();
+    Array1::from(Vec::from(xfft.as_slice()))
+}
+
+fn fft(x: &Array1<c64>, n: usize) -> Array1<c64> {
     // this is unnormalized, just like scipy.fftpack.fft
 
-    // not sure how to convert Array1 to AlignedVec other than element-by-element
-    // pad array if n > x.len()
-    let mut x2 = AlignedVec::new(n);
-    for i in 0..n {
-        if i < x.len() {
-            x2[i] = c64::new(x[i], 0.0); // c64 - complex datatype with args (real component, imag component)
-        } else {
-            x2[i] = c64::new(0.0, 0.0);
-        }
-    }
-    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Forward, Flag::Measure).unwrap();
-    let mut xfft = AlignedVec::new(n);
-    plan.c2c(&mut x2, &mut xfft).unwrap();
-    let xfft = Array1::<c64>::from(Vec::from(xfft.as_slice()));
-    xfft
+    fft_priv(x, n, Sign::Forward)
 }
 
-fn ifft(xfft: &Array1<c64>) -> Array1<c64> {
+fn ifft(x: &Array1<c64>) -> Array1<c64> {
     // this will normalize, just like scipy.fftpack.ifft
 
-    let n = xfft.len();
-    // not sure how to convert Array1 to AlignedVec other than element-by-element
-    let mut xfft2 = AlignedVec::new(n);
-    for i in 0..n {
-        xfft2[i] = xfft[i];
-    }
-    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], Sign::Backward, Flag::Measure).unwrap();
-    let mut x = AlignedVec::new(n);
-    plan.c2c(&mut xfft2, &mut x).unwrap();
-    let x = Array1::<c64>::from(Vec::from(x.as_slice()));
-    let x = x / c64::new(n as f64, 0.0);
-    x
+    fft_priv(x, x.len(), Sign::Backward) / c64::new(x.len() as f64, 0.0)
 }
 
-fn step_fn(x: &Array1<f64>) -> Array1<f64> {
-    return 0.5 * (x.mapv(f64::signum) + 1.0);
+fn step_fn(x: Array1<f64>) -> Array1<f64> {
+    0.5 * (x.mapv(f64::signum) + 1.0)
 }
 
 fn meshgrid_3d(
@@ -83,22 +68,14 @@ fn meshgrid_3d(
 }
 
 fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64> {
-    let mut y = Array3::<c64>::zeros(ind.raw_dim());
-    for i in 0..ind.shape()[0] {
-        for j in 0..ind.shape()[1] {
-            for k in 0..ind.shape()[2] {
-                y[[i, j, k]] = x[ind[[i, j, k]]];
-            }
-        }
-    }
-    y
+    Zip::from(ind).apply_collect(|idx| x[*idx])
 }
 
 fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) -> Array3<f64> {
     let yd = xd.clone();
     let det_len = 2e-3;
     let n_subdet = 25;
-    let n_subdet_perdim = (n_subdet as f64).sqrt() as usize;
+    let n_subdet_perdim = n_subdet.sqrt();
     let subdet_pitch = det_len / (n_subdet as f64).sqrt();
     let subdet_ind =
         Array::range(0.0, n_subdet_perdim as f64, 1.0) - (n_subdet_perdim as f64 - 1.0) / 2.0;
@@ -119,7 +96,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
                     let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
                     let tar_rad = tar_info[3];
                     let step_fn_arg = tar_rad - (r - c * t).mapv(f64::abs);
-                    pa_sig = pa_sig + step_fn(&step_fn_arg) * (r - c * t) / (2.0 * r);
+                    pa_sig = pa_sig + step_fn(step_fn_arg) * (r - c * t) / (2.0 * r);
                 }
             }
             let pr = pa_sig / n_subdet as f64;
@@ -168,10 +145,10 @@ fn perf_tom(
             let distind = (fs / c) * dist;
             let distind = distind.mapv(|x| <f64>::round(x) as usize);
             let p = sigs.slice(s![.., xi, yi]).to_owned();
+            let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
             let p_w = fft(&p, nfft);
             let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
             let p_filt = ifft(&p_filt_w);
-            let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
             let b =
                 c64::new(2.0, 0.0) * &p - c64::new(2.0, 0.0) * &t * c * p_filt.slice(s![..p.len()]);
             let b1 = array_indexing_3d_complex(&b, &distind);
@@ -190,8 +167,8 @@ fn perf_tom(
 }
 
 fn tom_plot(pfnorm: &Array3<f64>, xf: &Array1<f64>, yf: &Array1<f64>, dr: f64) {
-    let pfnormlog = 20.0 * pfnorm.mapv(|x| <f64>::log10(<f64>::abs(x)));
-    let pfnormlog = pfnormlog.mapv(|x| if x < (-1.0 * dr) { -1.0 * dr } else { x });
+    let pfnormlog = 20.0 * pfnorm.mapv(|x| x.abs().log10());
+    let pfnormlog = pfnormlog.mapv(|x| x.max(-dr));
     let pfnormlog = 255.0 * (pfnormlog + dr) / dr;
     let pfnormlog = pfnormlog.mapv(|x| x as u8);
     let imgx = pfnormlog.shape()[0] as u32;
@@ -245,7 +222,6 @@ fn main() {
     );
     tom_plot(&pfnorm, &xf, &yf, 6.0);
     // Be sure to bench by running:
-    // $ cargo build --release
-    // $ ./target/release/pa-tom
+    // $ cargo run --release
     println!("Elapsed time: {:.2?} s", before.elapsed());
 }
