@@ -1,5 +1,5 @@
 use ndarray::{prelude::*, stack, Zip};
-use ndarray_linalg::*;
+use ndarray_linalg::{norm::Norm, types::Scalar};
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
                                 //use ndarray_stats::SummaryStatisticsExt;
 use fftw::array::AlignedVec;
@@ -36,7 +36,7 @@ fn ifft(x: &Array1<c64>) -> Array1<c64> {
 
 fn step_fn(x: Array1<f64>) -> Array1<f64> {
     //0.5 * (x.mapv(f64::signum) + 1.0)
-    x.mapv(|v| 0.5 * (v.signum() + 1.0))
+    x.mapv_into(|v| 0.5 * (v.signum() + 1.0))
 }
 
 fn meshgrid_3d(
@@ -73,7 +73,6 @@ fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64
 }
 
 fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) -> Array3<f64> {
-    let yd = xd.clone();
     let det_len = 2e-3;
     let n_subdet = 25;
     let n_subdet_perdim = n_subdet.sqrt();
@@ -85,23 +84,24 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
     let fc = 4e6;
     let c = 1484.0;
     let n_det_x = xd.len();
-    let n_det_y = yd.len();
-    let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
-    for xi in 0..n_det_x {
-        for yi in 0..n_det_y {
+    let tar_rad = tar_info[3];
+    let tar_xyz = tar_info.slice(s![..3]);
+    let ct = c * t;
+
+    let mut sigs = Array3::<f64>::zeros((n_det_x, n_det_x, t.len()));
+    for (xi, &x) in xd.iter().enumerate() {
+        for (yi, &y) in xd.iter().enumerate() {
             let mut pa_sig = Array1::<f64>::zeros(t.len());
-            for m in 0..n_subdet_perdim {
-                for n in 0..n_subdet_perdim {
-                    let det_xyz = array![xd[xi] + subdet_offset[m], yd[yi] + subdet_offset[n], 0.0];
-                    let tar_xyz = tar_info.slice(s![..3]);
-                    let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
-                    let tar_rad = tar_info[3];
-                    let step_fn_arg = tar_rad - (r - c * t).mapv(f64::abs);
-                    pa_sig = pa_sig + step_fn(step_fn_arg) * (r - c * t) / (2.0 * r);
+            for offset_x in subdet_offset.iter() {
+                for offset_y in subdet_offset.iter() {
+                    let det_xyz = array![x + offset_x, y + offset_y, 0.0];
+                    let r = (det_xyz - tar_xyz).norm_l2();
+                    let step_fn_arg = ct.mapv(|v| tar_rad - (r - v).abs());
+                    pa_sig = pa_sig + step_fn(step_fn_arg) * (r - &ct) / (2.0 * r);
                 }
             }
             let pr = pa_sig / n_subdet as f64;
-            let mut slice = sigs.slice_mut(s![.., xi, yi]);
+            let mut slice = sigs.slice_mut(s![xi, yi, ..]);
             slice.assign(&pr);
         }
     }
@@ -145,7 +145,7 @@ fn perf_tom(
             let dist = &dist2.mapv(f64::sqrt);
             let distind = (fs / c) * dist;
             let distind = distind.mapv(|x| <f64>::round(x) as usize);
-            let p = sigs.slice(s![.., xi, yi]).to_owned();
+            let p = sigs.slice(s![xi, yi, ..]).to_owned();
             let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
             let p_w = fft(&p, nfft);
             let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
@@ -201,7 +201,7 @@ fn main() {
     let fs = 20e6;
     let ts = 1.0 / fs;
     let t = Array::range(0.0, 65e-6 + ts, ts);
-    let mut sigs = Array3::<f64>::zeros((t.len(), n_det, n_det));
+    let mut sigs = Array3::<f64>::zeros((n_det, n_det, t.len()));
     for n in 0..n_targ {
         println!(
             "Generating recorded signals arising from target {} of {}",
