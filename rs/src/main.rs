@@ -88,7 +88,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
     let tar_xyz = tar_info.slice(s![..3]);
     let ct = c * t;
 
-    let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
+    let mut sigs = Array3::<f64>::zeros((n_det_x, n_det_x, t.len()));
     for (xi, &x) in xd.iter().enumerate() {
         for (yi, &y) in xd.iter().enumerate() {
             let mut pa_sig = Array1::<f64>::zeros(t.len());
@@ -101,7 +101,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
                 }
             }
             let pr = pa_sig / n_subdet as f64;
-            let mut slice = sigs.slice_mut(s![.., xi, yi]);
+            let mut slice = sigs.slice_mut(s![xi, yi, ..]);
             slice.assign(&pr);
         }
     }
@@ -145,7 +145,7 @@ fn perf_tom(
             let dist = &dist2.mapv(f64::sqrt);
             let distind = (fs / c) * dist;
             let distind = distind.mapv(|x| <f64>::round(x) as usize);
-            let p = sigs.slice(s![.., xi, yi]).to_owned();
+            let p = sigs.slice(s![xi, yi, ..]).to_owned();
             let p = p.mapv(|x| c64::new(x, 0.0)); // convert to complex
             let p_w = fft(&p, nfft);
             let p_filt_w = c64::new(0.0, -1.0) * &k * p_w;
@@ -201,7 +201,7 @@ fn main() {
     let fs = 20e6;
     let ts = 1.0 / fs;
     let t = Array::range(0.0, 65e-6 + ts, ts);
-    let mut sigs = Array3::<f64>::zeros((t.len(), n_det, n_det));
+    let mut sigs = Array3::<f64>::zeros((n_det, n_det, t.len()));
     for n in 0..n_targ {
         println!(
             "Generating recorded signals arising from target {} of {}",
