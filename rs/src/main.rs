@@ -1,5 +1,5 @@
 use ndarray::{prelude::*, stack, Zip};
-use ndarray_linalg::*;
+use ndarray_linalg::{norm::Norm, types::Scalar};
 use ndarray_stats::QuantileExt; // this adds basic stat methods to your arrays
                                 //use ndarray_stats::SummaryStatisticsExt;
 use fftw::array::AlignedVec;
@@ -97,7 +97,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
                 for n in 0..n_subdet_perdim {
                     let det_xyz = array![xd[xi] + subdet_offset[m], yd[yi] + subdet_offset[n], 0.0];
                     let tar_xyz = tar_info.slice(s![..3]);
-                    let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
+                    let r = (det_xyz - tar_xyz).norm_l2();
                     let step_fn_arg = ct.mapv(|v| tar_rad - (r - v).abs());
                     pa_sig = pa_sig + step_fn(step_fn_arg) * (r - &ct) / (2.0 * r);
                 }
