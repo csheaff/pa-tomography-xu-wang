@@ -148,3 +148,10 @@ CMakeLists.txt.user*
 /target
 callgrind.out
 perf.data
+
+# pics
+*.svg
+*.png
+!figure_1.png
+!figure_2.png
+
