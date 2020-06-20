@@ -36,7 +36,7 @@ fn ifft(x: &Array1<c64>) -> Array1<c64> {
 
 fn step_fn(x: Array1<f64>) -> Array1<f64> {
     //0.5 * (x.mapv(f64::signum) + 1.0)
-    x.mapv(|v| 0.5 * (v.signum() + 1.0))
+    x.mapv_into(|v| 0.5 * (v.signum() + 1.0))
 }
 
 fn meshgrid_3d(
