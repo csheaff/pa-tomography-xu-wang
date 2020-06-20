@@ -87,6 +87,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
     let n_det_x = xd.len();
     let n_det_y = yd.len();
     let tar_rad = tar_info[3];
+    let tar_xyz = tar_info.slice(s![..3]);
     let ct = c * t;
 
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
@@ -96,7 +97,6 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
             for m in 0..n_subdet_perdim {
                 for n in 0..n_subdet_perdim {
                     let det_xyz = array![xd[xi] + subdet_offset[m], yd[yi] + subdet_offset[n], 0.0];
-                    let tar_xyz = tar_info.slice(s![..3]);
                     let r = (det_xyz - tar_xyz).norm_l2();
                     let step_fn_arg = ct.mapv(|v| tar_rad - (r - v).abs());
                     pa_sig = pa_sig + step_fn(step_fn_arg) * (r - &ct) / (2.0 * r);
