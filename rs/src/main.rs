@@ -73,7 +73,6 @@ fn array_indexing_3d_complex(x: &Array1<c64>, ind: &Array3<usize>) -> Array3<c64
 }
 
 fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) -> Array3<f64> {
-    let yd = xd.clone();
     let det_len = 2e-3;
     let n_subdet = 25;
     let n_subdet_perdim = n_subdet.sqrt();
@@ -85,14 +84,13 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
     let fc = 4e6;
     let c = 1484.0;
     let n_det_x = xd.len();
-    let n_det_y = yd.len();
     let tar_rad = tar_info[3];
     let tar_xyz = tar_info.slice(s![..3]);
     let ct = c * t;
 
     let mut sigs = Array3::<f64>::zeros((t.len(), n_det_x, n_det_x));
     for (xi, &x) in xd.iter().enumerate() {
-        for (yi, &y) in yd.iter().enumerate() {
+        for (yi, &y) in xd.iter().enumerate() {
             let mut pa_sig = Array1::<f64>::zeros(t.len());
             for offset_x in subdet_offset.iter() {
                 for offset_y in subdet_offset.iter() {
