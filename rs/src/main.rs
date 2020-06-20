@@ -98,7 +98,7 @@ fn get_signals(tar_info: &ArrayView1<f64>, xd: &Array1<f64>, t: &Array1<f64>) ->
                     let tar_xyz = tar_info.slice(s![..3]);
                     let r = norm::Norm::norm_l2(&(det_xyz - tar_xyz));
                     let tar_rad = tar_info[3];
-                    let step_fn_arg = tar_rad - (r - &ct).mapv(f64::abs);
+                    let step_fn_arg = ct.mapv(|v| tar_rad - (r - v).abs());
                     pa_sig = pa_sig + step_fn(step_fn_arg) * (r - &ct) / (2.0 * r);
                 }
             }
