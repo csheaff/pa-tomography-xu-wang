@@ -1100,7 +1100,6 @@ version = "0.1.0"
 dependencies = [
  "blas-src 0.2.1",
  "fftw",
- "fftw-src",
  "image",
  "ndarray 0.13.1",
  "ndarray-linalg",
