@@ -344,9 +344,9 @@ dependencies = [
 
 [[package]]
 name = "fftw"
-version = "0.6.0"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b58d31f1c646740670d625daba920e7db6573b54d9cf523aff19128dfb7ad82b"
+checksum = "9a61025ae24e60113038885a9ad24ef67b3f4df0b4300c98678c63e8ce3297f8"
 dependencies = [
  "bitflags",
  "failure",

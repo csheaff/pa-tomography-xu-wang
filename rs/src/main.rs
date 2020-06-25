@@ -16,7 +16,7 @@ fn fft_priv(x: &Array1<c64>, n: usize, sign: Sign) -> Array1<c64> {
         *x_aligned = x;
     }
 
-    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], sign, Flag::Measure).unwrap();
+    let mut plan: C2CPlan64 = C2CPlan::aligned(&[n], sign, Flag::MEASURE).unwrap();
 
     plan.c2c(&mut xs_aligned, &mut xfft).unwrap();
     Array1::from(Vec::from(xfft.as_slice()))

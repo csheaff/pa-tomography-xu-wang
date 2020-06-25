@@ -14,7 +14,7 @@ num-integer = "0.1"
 blas-src = { version = "0.2.0", default-features = false, features = ["openblas"] }
 openblas-src = { version = "0.6.0", default-features = false, features = ["cblas", "system"] }
 fftw-src = { version = "0.3.0"} # had to set CC=/usr/bin/gcc followed by 'cargo clean' to compile correctly (anaconda conflict)
-fftw = { version = "0.6.0"}
+fftw = "0.6.2"
 image = { version = "0.23.4"}
 
 [profile.release]
